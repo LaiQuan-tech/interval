@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import CartLink from "@/components/CartLink";
 import MobileNav from "@/components/MobileNav";
+import NavLinks from "@/components/NavLinks";
 
 export default async function Header() {
   let user = null;
@@ -23,43 +24,46 @@ export default async function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-paper/90 backdrop-blur">
-      <div className="iv-container flex h-14 items-center justify-between gap-4 sm:h-16">
-        <Link href="/" className="text-lg font-bold tracking-wide">
-          interval
-          <span className="ml-2 hidden text-xs font-normal text-ink-soft sm:inline">
-            賣到全世界
-          </span>
+    <header className="sticky top-0 z-40 bg-paper/94 backdrop-blur-sm">
+      <div className="lm-container flex h-auto items-center justify-between gap-6 py-5">
+        <Link
+          href="/"
+          className="shrink-0 font-serif text-[22px] font-semibold tracking-[0.2em] text-ink-deep sm:text-[25px]"
+        >
+          小時光
         </Link>
 
-        <nav className="hidden items-center gap-6 text-sm font-medium md:flex">
-          <Link href="/products" className="hover:text-accent">
-            商品
-          </Link>
-          <Link href="/quote-info" className="hover:text-accent">
-            大量採購
-          </Link>
-          {isAdmin && (
-            <Link href="/admin" className="text-accent hover:text-accent-dark">
-              後台管理
-            </Link>
-          )}
+        <nav className="hidden items-center gap-8 text-sm tracking-[0.08em] lg:flex">
+          <NavLinks />
         </nav>
 
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="flex items-center gap-2 sm:gap-3">
           <CartLink />
+          <Link
+            href="/booking"
+            className="hidden whitespace-nowrap border border-ink-deep px-5 py-2 font-cormorant text-sm tracking-[0.2em] text-ink-deep lg:inline-flex"
+          >
+            預約參訪
+          </Link>
           {user ? (
-            <Link href="/account" className="iv-btn-ghost hidden !min-h-9 !px-4 !py-1.5 md:inline-flex">
+            <Link
+              href="/account"
+              className="iv-btn-ghost hidden !min-h-9 !px-4 !py-1.5 lg:inline-flex"
+            >
               會員中心
             </Link>
           ) : (
-            <Link href="/login" className="iv-btn-primary hidden !min-h-9 !px-4 !py-1.5 md:inline-flex">
+            <Link
+              href="/login"
+              className="iv-btn-primary hidden !min-h-9 !px-4 !py-1.5 lg:inline-flex"
+            >
               登入
             </Link>
           )}
           <MobileNav loggedIn={Boolean(user)} isAdmin={isAdmin} />
         </div>
       </div>
+      <div className="lm-hairline" />
     </header>
   );
 }

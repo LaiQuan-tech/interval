@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import type { ChatMessage } from "@/lib/types";
 
 const SUGGESTIONS = [
-  "你們賣哪些商品?",
-  "大量採購怎麼報價?",
-  "下單後多久出貨?",
+  "有哪些作品可以租賃或買斷?",
+  "私人旅程怎麼規劃?",
+  "會員點數怎麼累積?",
 ];
 
 export default function ChatWidget() {
@@ -17,7 +17,7 @@ export default function ChatWidget() {
     {
       role: "assistant",
       content:
-        "您好,我是 interval 智慧客服!想了解商品、下單,或需要大量採購報價,都可以直接問我。",
+        "您好，我是小時光的智慧客服顧問！想了解藝術典藏、租賃買斷、私人旅程或會員制度，都可以直接問我。",
     },
   ]);
   const [input, setInput] = useState("");
@@ -100,7 +100,7 @@ export default function ChatWidget() {
         ...m,
         {
           role: "assistant",
-          content: "抱歉,系統忙碌中,請稍後再試,或直接到商品頁逛逛!",
+          content: "抱歉，系統忙碌中，請稍後再試，或直接到藝術典藏頁逛逛！",
         },
       ]);
     } finally {
@@ -114,7 +114,7 @@ export default function ChatWidget() {
       <button
         aria-label={open ? "關閉客服" : "開啟智慧客服"}
         onClick={() => setOpen(!open)}
-        className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-lg shadow-accent/30 transition-transform hover:scale-105"
+        className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-ink-deep text-cream-text shadow-lg shadow-ink-deep/30 transition-transform hover:scale-105"
       >
         {open ? (
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -131,13 +131,13 @@ export default function ChatWidget() {
       {/* 對話面板:手機貼齊左右、桌機固定寬 */}
       {open && (
         <div className="fixed inset-x-3 bottom-22 z-50 flex max-h-[72dvh] flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-2xl sm:inset-x-auto sm:right-5 sm:w-95">
-          <div className="flex items-center gap-3 bg-ink px-4 py-3 text-white">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-bold">
-              iv
+          <div className="flex items-center gap-3 bg-ink-deep px-4 py-3 text-cream-text">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gold text-sm font-bold text-ink-deep">
+              小
             </div>
             <div>
-              <div className="text-sm font-semibold">interval 智慧客服</div>
-              <div className="text-xs text-white/60">AI 導購 · 自動報價</div>
+              <div className="text-sm font-semibold">小時光智慧客服</div>
+              <div className="text-xs text-cream-soft">AI 顧問 · 自動報價</div>
             </div>
           </div>
 
@@ -147,15 +147,15 @@ export default function ChatWidget() {
                 key={i}
                 className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                   m.role === "user"
-                    ? "ml-auto bg-accent text-white"
-                    : "bg-paper text-ink"
+                    ? "ml-auto bg-ink-deep text-cream-text"
+                    : "bg-panel text-ink"
                 }`}
               >
                 {m.content || "…"}
               </div>
             ))}
             {loading && messages[messages.length - 1]?.role === "user" && (
-              <div className="max-w-[85%] rounded-2xl bg-paper px-3.5 py-2.5 text-sm text-ink-soft">
+              <div className="max-w-[85%] rounded-2xl bg-panel px-3.5 py-2.5 text-sm text-ink-soft">
                 正在輸入…
               </div>
             )}
@@ -165,7 +165,7 @@ export default function ChatWidget() {
                   <button
                     key={s}
                     onClick={() => send(s)}
-                    className="rounded-full border border-line bg-card px-3 py-1.5 text-xs text-ink-soft hover:border-accent hover:text-accent"
+                    className="rounded-full border border-line bg-card px-3 py-1.5 text-xs text-ink-soft hover:border-gold hover:text-accent"
                   >
                     {s}
                   </button>
@@ -186,13 +186,13 @@ export default function ChatWidget() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="輸入訊息…"
-              className="min-h-11 flex-1 rounded-full border border-line bg-paper px-4 text-sm outline-none focus:border-accent"
+              className="min-h-11 flex-1 rounded-full border border-line bg-paper px-4 text-sm outline-none focus:border-gold"
             />
             <button
               type="submit"
               disabled={loading || !input.trim()}
               aria-label="送出"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-white disabled:opacity-40"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink-deep text-cream-text disabled:opacity-40"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 2 11 13" />

@@ -7,7 +7,7 @@ const SECTIONS = [
   {
     key: "company_profile",
     title: "公司資訊",
-    hint: '例:{"name": "interval", "tagline": "賣到全世界", "email": "hi@example.com", "phone": "02-1234-5678", "bank_info": "銀行:812 台新\\n帳號:1234567890\\n戶名:interval", "about": "公司簡介(AI 客服會參考)"}',
+    hint: '例:{"name": "小時光 Little Moments", "tagline": "為懂得生活的人，典藏值得停留的時光", "email": "salon@littlemoments.tw", "phone": "+886 2 0000 0000", "address": "台北市大安區　小時光書店", "hours": "週二至週日 11:00–20:00", "bank_info": "銀行:812 台新\\n帳號:1234567890\\n戶名:小時光藝術有限公司", "about": "公司簡介(AI 客服會參考)"}',
   },
   {
     key: "rate_card",

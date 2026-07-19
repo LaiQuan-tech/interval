@@ -10,6 +10,7 @@ const NAV = [
   { href: "/admin/quotes", label: "報價" },
   { href: "/admin/products", label: "商品" },
   { href: "/admin/members", label: "會員" },
+  { href: "/admin/bookings", label: "預約" },
   { href: "/admin/settings", label: "設定" },
 ];
 

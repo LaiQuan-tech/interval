@@ -49,3 +49,21 @@ export const PAYMENT_METHOD_LABEL: Record<string, string> = {
   card: "信用卡",
   other: "其他",
 };
+
+export const PURCHASE_MODE_LABEL: Record<string, string> = {
+  buyout: "買斷",
+  rental: "月租",
+  journey: "私人旅程",
+  membership: "會員方案",
+};
+
+export const BOOKING_STATUS_LABEL: Record<string, string> = {
+  new: "待處理",
+  confirmed: "已確認",
+  done: "已完成",
+  cancelled: "已取消",
+};
+
+export function formatPoints(points: number) {
+  return `${points.toLocaleString("zh-TW")} 點`;
+}

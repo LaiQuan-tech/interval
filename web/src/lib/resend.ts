@@ -9,7 +9,7 @@ export async function sendMail(opts: {
 }) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey || !opts.to) return false;
-  const from = process.env.RESEND_FROM ?? "interval <onboarding@resend.dev>";
+  const from = process.env.RESEND_FROM ?? "小時光 Little Moments <onboarding@resend.dev>";
   try {
     const res = await fetch(RESEND_URL, {
       method: "POST",
@@ -38,7 +38,7 @@ export async function sendMail(opts: {
 export async function notifyAdmin(subject: string, html: string) {
   const to = process.env.CONTACT_NOTIFY_TO;
   if (!to) return false;
-  return sendMail({ to, subject: `【interval 後台】${subject}`, html });
+  return sendMail({ to, subject: `【小時光後台】${subject}`, html });
 }
 
 export function siteUrl() {
@@ -47,13 +47,13 @@ export function siteUrl() {
 
 export function emailShell(title: string, body: string) {
   return `
-  <div style="font-family:'Noto Sans TC','PingFang TC',sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#101828;">
-    <div style="font-size:20px;font-weight:700;letter-spacing:.02em;margin-bottom:4px;">interval</div>
-    <div style="font-size:12px;color:#667085;margin-bottom:20px;">賣到全世界</div>
-    <div style="border:1px solid #e7e5df;border-radius:16px;padding:24px;background:#fff;">
-      <h2 style="margin:0 0 16px;font-size:17px;">${title}</h2>
+  <div style="font-family:'Noto Serif TC','Noto Sans TC','PingFang TC',sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#2a2016;">
+    <div style="font-size:20px;font-weight:700;letter-spacing:.2em;margin-bottom:4px;color:#2e2519;">小時光</div>
+    <div style="font-size:12px;color:#8a7259;margin-bottom:20px;">Little Moments · 為懂得生活的人，典藏值得停留的時光</div>
+    <div style="border:1px solid #e2d7c4;border-radius:4px;padding:24px;background:#faf6ee;">
+      <h2 style="margin:0 0 16px;font-size:17px;color:#2a2016;">${title}</h2>
       ${body}
     </div>
-    <div style="font-size:12px;color:#98a2b3;margin-top:16px;">此信件由系統自動發送,請勿直接回覆。</div>
+    <div style="font-size:12px;color:#8a7259;margin-top:16px;">此信件由系統自動發送,請勿直接回覆。</div>
   </div>`;
 }

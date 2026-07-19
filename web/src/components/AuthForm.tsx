@@ -59,7 +59,7 @@ export default function AuthForm() {
 
   return (
     <div className="iv-card mt-6">
-      <div className="mb-5 grid grid-cols-2 rounded-full bg-paper p-1 text-sm font-semibold">
+      <div className="mb-5 grid grid-cols-2 bg-panel p-1 text-sm font-medium">
         {(["login", "register"] as const).map((m) => (
           <button
             key={m}
@@ -67,8 +67,8 @@ export default function AuthForm() {
               setMode(m);
               setError("");
             }}
-            className={`min-h-10 rounded-full transition-colors ${
-              mode === m ? "bg-ink text-white" : "text-ink-soft"
+            className={`min-h-10 transition-colors ${
+              mode === m ? "bg-ink-deep text-cream-text" : "text-ink-soft"
             }`}
           >
             {m === "login" ? "登入" : "註冊"}

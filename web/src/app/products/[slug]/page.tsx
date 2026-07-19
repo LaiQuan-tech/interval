@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatTWD } from "@/lib/format";
-import AddToCartButton from "@/components/AddToCartButton";
-import type { Product } from "@/lib/types";
+import { formatTWD, formatPoints } from "@/lib/format";
+import Placeholder, { gradientForId } from "@/components/Placeholder";
+import ArtworkPurchaseSection from "@/components/ArtworkPurchaseSection";
+import QuickAddButton from "@/components/QuickAddButton";
+import OpenChatButton from "@/components/OpenChatButton";
+import type { MembershipTier, Product } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +17,7 @@ export default async function ProductDetailPage({
   const { slug } = await params;
 
   let product: Product | null = null;
+  let tier: MembershipTier | null = null;
   try {
     const supabase = createAdminClient();
     const { data } = await supabase
@@ -24,63 +27,118 @@ export default async function ProductDetailPage({
       .eq("status", "active")
       .maybeSingle();
     product = data as Product | null;
+
+    if (product?.product_type === "membership") {
+      const tierSlug = (product.metadata as { tier_slug?: string })?.tier_slug;
+      if (tierSlug) {
+        const { data: tierData } = await supabase
+          .from("membership_tiers")
+          .select("*")
+          .eq("slug", tierSlug)
+          .maybeSingle();
+        tier = tierData as MembershipTier | null;
+      }
+    }
   } catch {
     /* env 未設定 */
   }
 
   if (!product) notFound();
 
-  const image = product.images?.[0];
+  const metadata = product.metadata as {
+    tag?: string;
+    medium?: string;
+    gradient?: [string, string];
+    duration?: string;
+  };
+  const gradient = metadata?.gradient ?? gradientForId(product.id);
 
   return (
-    <div className="iv-container py-8 sm:py-12">
-      <div className="grid gap-8 lg:grid-cols-2">
-        <div className="relative aspect-square overflow-hidden rounded-2xl border border-line bg-card">
-          {image?.url ? (
-            <Image
-              src={image.url}
-              alt={image.alt ?? product.name}
-              fill
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover"
-              priority
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-6xl font-bold text-line">
-              iv
-            </div>
-          )}
-        </div>
+    <div className="lm-container py-12 sm:py-16">
+      <div className="grid gap-10 lg:grid-cols-2 lg:gap-14">
+        <Placeholder
+          gradient={gradient}
+          label={metadata?.tag}
+          className="aspect-square w-full"
+        />
 
         <div className="flex flex-col">
           {product.category && (
-            <span className="text-sm text-ink-soft">{product.category}</span>
+            <span className="lm-caption text-[12px]">{product.category}</span>
           )}
-          <h1 className="mt-1 text-2xl font-bold sm:text-3xl">{product.name}</h1>
-          <div className="mt-4 flex items-baseline gap-3">
-            <span className="text-3xl font-bold text-accent">
-              {formatTWD(product.price)}
-            </span>
-            {product.compare_at_price &&
-              product.compare_at_price > product.price && (
-                <span className="text-lg text-ink-soft line-through">
-                  {formatTWD(product.compare_at_price)}
-                </span>
-              )}
-          </div>
+          <h1 className="mt-2 mb-1 font-serif text-[28px] font-normal text-ink sm:text-[34px]">
+            {product.name}
+          </h1>
+          {metadata?.medium && (
+            <span className="font-cormorant text-[15px] text-accent">{metadata.medium}</span>
+          )}
 
-          <p className="mt-6 whitespace-pre-wrap text-base leading-relaxed text-ink-soft">
-            {product.description || "此商品尚無詳細說明。"}
+          <p className="mt-6 whitespace-pre-wrap text-[15px] leading-[1.9] text-ink-soft">
+            {product.description || "此作品尚無詳細說明。"}
           </p>
 
           <div className="mt-8">
-            <AddToCartButton product={product} />
+            {product.product_type === "artwork" && (
+              <ArtworkPurchaseSection product={product} />
+            )}
+
+            {product.product_type === "journey" && (
+              <div>
+                {metadata?.duration && (
+                  <div className="mb-1 text-[13px] text-muted-2">{metadata.duration}</div>
+                )}
+                <div className="mb-2 flex items-baseline gap-2">
+                  <span className="font-cormorant text-[15px] text-accent">from</span>
+                  <span className="font-serif text-[28px] text-ink">{formatTWD(product.price)}</span>
+                </div>
+                {product.points_price != null && (
+                  <div className="mb-6 text-[13px] text-muted-2">
+                    或 {formatPoints(product.points_price)}
+                  </div>
+                )}
+                <QuickAddButton
+                  product={product}
+                  mode="journey"
+                  unitPrice={product.price}
+                  label="加入購物車"
+                  addedLabel="已加入 ✓"
+                  className="iv-btn-primary w-full sm:w-auto"
+                />
+              </div>
+            )}
+
+            {product.product_type === "membership" && (
+              <div>
+                <div className="mb-5 font-serif text-[28px] text-ink">
+                  {formatTWD(product.price)}
+                  <span className="text-[14px] text-muted-2"> / 年</span>
+                </div>
+                {tier && tier.perks.length > 0 && (
+                  <div className="mb-6 flex flex-col gap-2.5 text-[14px] leading-[1.6] text-ink-soft">
+                    {tier.perks.map((perk) => (
+                      <div key={perk}>· {perk}</div>
+                    ))}
+                  </div>
+                )}
+                <QuickAddButton
+                  product={product}
+                  mode="membership"
+                  unitPrice={product.price}
+                  label="加入此方案"
+                  addedLabel="已加入 ✓"
+                  className="iv-btn-primary w-full sm:w-auto"
+                />
+              </div>
+            )}
           </div>
 
-          <div className="mt-6 rounded-xl bg-accent-soft p-4 text-sm leading-relaxed text-ink">
-            需要大量採購或客製?跟右下角的
-            <span className="font-semibold text-accent"> AI 智慧客服 </span>
-            說需求,我們會自動為你準備專屬報價單。
+          <div className="mt-8 border border-line bg-panel p-5 text-sm leading-[1.8] text-ink-soft">
+            需要客製尺寸、企業空間規劃或專屬旅程？跟
+            <span className="mx-1 font-semibold text-accent">AI 顧問</span>
+            說需求，我們會為您準備專屬報價單。
+            <div className="mt-3">
+              <OpenChatButton />
+            </div>
           </div>
         </div>
       </div>

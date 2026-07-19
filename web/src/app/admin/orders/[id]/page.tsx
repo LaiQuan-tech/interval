@@ -3,9 +3,11 @@ import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   formatDateTime,
+  formatPoints,
   formatTWD,
   ORDER_STATUS_LABEL,
   PAYMENT_METHOD_LABEL,
+  PURCHASE_MODE_LABEL,
 } from "@/lib/format";
 import OrderStatusButtons from "@/components/admin/OrderStatusButtons";
 import type { Order, OrderItem } from "@/lib/types";
@@ -72,7 +74,13 @@ export default async function AdminOrderDetailPage({
         <ul className="space-y-2">
           {typedItems.map((i) => (
             <li key={i.id} className="flex justify-between gap-3">
-              <span>{i.name} × {i.quantity}</span>
+              <span>
+                {i.name}
+                <span className="iv-chip ml-2 bg-accent-soft text-accent">
+                  {PURCHASE_MODE_LABEL[i.purchase_mode] ?? i.purchase_mode}
+                </span>
+                {" "}× {i.quantity}
+              </span>
               <span>{formatTWD(i.unit_price * i.quantity)}</span>
             </li>
           ))}
@@ -86,10 +94,22 @@ export default async function AdminOrderDetailPage({
             <span className="text-ink-soft">運費</span>
             <span>{formatTWD(typedOrder.shipping_fee)}</span>
           </div>
+          {typedOrder.points_used > 0 && (
+            <div className="flex justify-between">
+              <span className="text-ink-soft">點數折抵</span>
+              <span>-{formatTWD(typedOrder.points_used)}({formatPoints(typedOrder.points_used)})</span>
+            </div>
+          )}
           <div className="flex justify-between font-bold">
             <span>合計</span>
             <span className="text-accent">{formatTWD(typedOrder.total)}</span>
           </div>
+          {typedOrder.points_earned > 0 && (
+            <div className="flex justify-between text-xs text-ink-soft">
+              <span>已核發消費回饋點數</span>
+              <span>{formatPoints(typedOrder.points_earned)}</span>
+            </div>
+          )}
         </div>
       </section>
 

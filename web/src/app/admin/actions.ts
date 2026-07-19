@@ -6,7 +6,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendQuoteToCustomer, computeTotals } from "@/lib/quote";
 import { getQuoteConfig } from "@/lib/settings";
 import { emailShell, sendMail, siteUrl } from "@/lib/resend";
-import type { QuoteLineItem } from "@/lib/types";
+import {
+  adjustPoints,
+  applyMembershipPurchase,
+  grantPointsForOrder,
+  refundPointsForOrder,
+} from "@/lib/points";
+import type { Order, QuoteLineItem } from "@/lib/types";
 
 // 每個 action 都先驗證 admin 身分,再用 service role 寫入
 async function requireAdmin() {
@@ -107,6 +113,15 @@ export async function updateOrderStatus(orderId: string, next: string) {
   const { error } = await db.from("orders").update(patch).eq("id", orderId);
   if (error) throw new Error(error.message);
 
+  // 點數:→paid 核發消費回饋 + 若含會員方案商品則套用等級;→cancelled 回沖折抵/收回回饋
+  const updatedOrder = { ...order, ...patch } as Order;
+  if (next === "paid") {
+    await grantPointsForOrder(updatedOrder);
+    await applyMembershipPurchase(updatedOrder);
+  } else if (next === "cancelled") {
+    await refundPointsForOrder(updatedOrder);
+  }
+
   // 通知客戶
   const STATUS_MAIL: Record<string, { subject: string; body: string }> = {
     paid: {
@@ -130,7 +145,7 @@ export async function updateOrderStatus(orderId: string, next: string) {
   if (mail && order.contact_email) {
     await sendMail({
       to: order.contact_email,
-      subject: `【interval】${mail.subject} ${order.order_no}`,
+      subject: `【小時光】${mail.subject} ${order.order_no}`,
       html: emailShell(
         `${mail.subject}`,
         `<p>${order.contact_name} 您好,</p><p>${mail.body}</p>
@@ -213,6 +228,56 @@ export async function setMemberRole(userId: string, role: "customer" | "admin") 
   const db = createAdminClient();
   await db.from("profiles").update({ role }).eq("id", userId);
   revalidatePath("/admin/members");
+}
+
+// 手動調整會員點數(正數加點、負數扣點)
+export async function adjustMemberPoints(userId: string, delta: number, note: string) {
+  const me = await requireAdmin();
+  if (!Number.isInteger(delta) || delta === 0) {
+    throw new Error("調整點數須為非零整數");
+  }
+  await adjustPoints(userId, delta, note, me.email ?? me.id);
+  revalidatePath("/admin/members");
+}
+
+// ---------- 預約參訪 ----------
+const BOOKING_TRANSITIONS: Record<string, string[]> = {
+  new: ["confirmed", "cancelled"],
+  confirmed: ["done", "cancelled"],
+  done: [],
+  cancelled: [],
+};
+
+export async function updateBookingStatus(bookingId: string, next: string) {
+  await requireAdmin();
+  const db = createAdminClient();
+
+  const { data: booking } = await db
+    .from("bookings")
+    .select("*")
+    .eq("id", bookingId)
+    .maybeSingle();
+  if (!booking) throw new Error("找不到預約");
+  if (!BOOKING_TRANSITIONS[booking.status]?.includes(next)) {
+    throw new Error(`不允許從 ${booking.status} 變更為 ${next}`);
+  }
+
+  const { error } = await db.from("bookings").update({ status: next }).eq("id", bookingId);
+  if (error) throw new Error(error.message);
+
+  if (next === "confirmed" && booking.email) {
+    await sendMail({
+      to: booking.email,
+      subject: `【小時光】您的預約已確認`,
+      html: emailShell(
+        "預約已確認",
+        `<p>${booking.name} 您好,您預約的參訪已確認${booking.visit_date ? `,日期為 ${booking.visit_date}` : ""}。</p>
+         <p>期待與您在小時光書店相會,若時間需調整歡迎直接回覆此信或致電門市。</p>`
+      ),
+    });
+  }
+
+  revalidatePath("/admin/bookings");
 }
 
 // ---------- 設定 ----------

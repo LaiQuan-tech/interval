@@ -97,12 +97,12 @@ export async function sendQuoteToCustomer(quoteId: string) {
 
   const ok = await sendMail({
     to: quote.contact_email,
-    subject: `【interval】您的報價單 ${quote.quote_no}`,
+    subject: `【小時光】您的報價單 ${quote.quote_no}`,
     html: emailShell(
       `報價單 ${quote.quote_no}`,
       `<p>${quote.contact_name || "您好"},您的報價單已準備好:</p>
        <p style="margin:20px 0;"><a href="${siteUrl()}/quote/${quote.public_token}"
-          style="background:#2742f5;color:#fff;padding:12px 28px;border-radius:999px;text-decoration:none;font-weight:700;">查看報價單</a></p>
+          style="background:#2e2519;color:#f7f1e5;padding:12px 28px;border-radius:2px;text-decoration:none;font-weight:700;letter-spacing:.05em;">查看報價單</a></p>
        <p>報價有效期限至 ${validUntil}。在報價單頁面按「接受報價」即可直接成立訂單。</p>`
     ),
   });
@@ -191,7 +191,7 @@ export async function acceptQuoteByToken(token: string) {
   if (quote.contact_email) {
     await sendMail({
       to: quote.contact_email,
-      subject: `【interval】訂單成立 ${order.order_no}`,
+      subject: `【小時光】訂單成立 ${order.order_no}`,
       html: emailShell(
         `訂單 ${order.order_no} 已成立`,
         `<p>感謝接受報價!您的訂單已成立,金額 NT$ ${order.total.toLocaleString()}。</p>

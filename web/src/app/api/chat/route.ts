@@ -5,7 +5,7 @@ import {
   buildSalesSystem,
   classifyQuoteReady,
   fallbackReply,
-  hasAnthropicKey,
+  hasGeminiKey,
   hasQuoteIntent,
   streamChatReply,
 } from "@/lib/ai";
@@ -79,13 +79,19 @@ export async function POST(req: NextRequest) {
   const { data: products } = supabase
     ? await supabase
         .from("products")
-        .select("name, price, category")
+        .select("name, price, category, product_type, price_rental_monthly")
         .eq("status", "active")
         .order("featured", { ascending: false })
         .limit(20)
     : { data: [] };
   const productSummary = (products ?? [])
-    .map((p) => `- ${p.name}(NT$${p.price}${p.category ? `,${p.category}` : ""})`)
+    .map((p) => {
+      const priceLabel =
+        p.product_type === "artwork" && p.price_rental_monthly
+          ? `月租 NT$${p.price_rental_monthly} · 買斷 NT$${p.price}`
+          : `NT$${p.price}`;
+      return `- ${p.name}(${priceLabel}${p.category ? `,${p.category}` : ""})`;
+    })
     .join("\n");
 
   const encoder = new TextEncoder();
@@ -97,28 +103,25 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(sse(payload)));
 
       try {
-        if (hasAnthropicKey()) {
+        if (hasGeminiKey()) {
           const system = buildSalesSystem(company, rateCard, productSummary);
-          const claudeStream = await streamChatReply(system, messages);
-          for await (const event of claudeStream) {
-            if (
-              event.type === "content_block_delta" &&
-              event.delta.type === "text_delta"
-            ) {
-              assistantText += event.delta.text;
-              push({ type: "text", text: event.delta.text });
-            }
+          for await (const delta of streamChatReply(system, messages)) {
+            assistantText += delta;
+            push({ type: "text", text: delta });
           }
         } else {
           assistantText = fallbackReply(messages, company);
           push({ type: "text", text: assistantText });
         }
       } catch (err) {
+        // Gemini 失敗(含免費層 429 限流)時退回規則式回覆,客服流程不中斷
         console.error("[chat] stream failed:", err);
-        assistantText =
-          assistantText ||
-          "抱歉,系統忙碌中,請稍後再試,或留下 email 由專人與您聯繫。";
-        push({ type: "text", text: " " + assistantText });
+        if (!assistantText) {
+          assistantText = fallbackReply(messages, company);
+          push({ type: "text", text: assistantText });
+        } else {
+          push({ type: "text", text: "\n\n(回覆似乎被中斷了,歡迎留下 email,由專人與您聯繫。)" });
+        }
       }
 
       const fullConvo: ChatMessage[] = [

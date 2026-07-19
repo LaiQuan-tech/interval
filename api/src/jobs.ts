@@ -10,7 +10,7 @@ function db() {
 
 async function sendEmail(to: string, subject: string, html: string) {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM ?? "interval <onboarding@resend.dev>";
+  const from = process.env.RESEND_FROM ?? "小時光 Little Moments <onboarding@resend.dev>";
   if (!apiKey) return false;
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -29,7 +29,7 @@ export async function runFollowupJobs() {
   const supabase = db();
   if (!supabase) return { ok: false, reason: "supabase env missing" };
 
-  const results = { expiredQuotes: 0, quoteReminders: 0, orderReminders: 0 };
+  const results = { expiredQuotes: 0, quoteReminders: 0, orderReminders: 0, pointsExpired: 0 };
   const now = new Date();
 
   // 1. 過期報價:已寄出但超過有效期 → expired
@@ -57,7 +57,7 @@ export async function runFollowupJobs() {
     if (q.note?.includes("[reminded]")) continue;
     const ok = await sendEmail(
       q.contact_email,
-      `【interval】報價單 ${q.quote_no} 提醒`,
+      `【小時光】報價單 ${q.quote_no} 提醒`,
       `<p>${q.contact_name || "您好"},提醒您先前的報價單仍在有效期內:</p>
        <p><a href="${SITE()}/quote/${q.public_token}">查看報價單 ${q.quote_no}</a></p>`
     );
@@ -82,7 +82,7 @@ export async function runFollowupJobs() {
     if (o.note?.includes("[reminded]")) continue;
     const ok = await sendEmail(
       o.contact_email,
-      `【interval】訂單 ${o.order_no} 付款提醒`,
+      `【小時光】訂單 ${o.order_no} 付款提醒`,
       `<p>${o.contact_name || "您好"},您的訂單尚未完成付款:</p>
        <p><a href="${SITE()}/orders/${o.public_token}">查看訂單 ${o.order_no}</a></p>`
     );
@@ -93,6 +93,24 @@ export async function runFollowupJobs() {
         .eq("id", o.id);
       results.orderReminders++;
     }
+  }
+
+  // 4. 點數到期:earn 已過期且尚未沖銷者 → 寫入對應 expire 負項(冪等:source_ref_id=原 earn id)
+  //    v_expirable_earn_points 已排除先前已沖銷過的紀錄,避免每次全表掃描
+  const { data: expirable } = await supabase
+    .from("v_expirable_earn_points")
+    .select("id, user_id, delta");
+
+  for (const earn of expirable ?? []) {
+    const { error } = await supabase.from("points_ledger").insert({
+      user_id: earn.user_id,
+      delta: -earn.delta,
+      source: "expire",
+      source_ref_id: earn.id,
+      note: "點數到期",
+    });
+    // unique violation(23505)代表已被其他來源(如訂單取消)沖銷過,略過即可(冪等)
+    if (!error) results.pointsExpired++;
   }
 
   return { ok: true, ...results, ranAt: now.toISOString() };

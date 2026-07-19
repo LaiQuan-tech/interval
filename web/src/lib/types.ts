@@ -5,8 +5,12 @@ export type Profile = {
   phone: string | null;
   line_id: string | null;
   role: "customer" | "admin";
+  tier_slug: string | null;
+  tier_expires_at: string | null;
   created_at: string;
 };
+
+export type ProductType = "artwork" | "journey" | "membership";
 
 export type Product = {
   id: string;
@@ -22,6 +26,10 @@ export type Product = {
   status: "draft" | "active" | "archived";
   featured: boolean;
   sort_order: number;
+  product_type: ProductType;
+  price_rental_monthly: number | null; // 月租價(僅 artwork)
+  points_price: number | null;         // 可折抵點數(journey 用)
+  metadata: Record<string, unknown>;   // artwork: {tag, medium, gradient} / journey: {duration} / membership: {tier_slug}
 };
 
 export type OrderStatus =
@@ -41,6 +49,8 @@ export type Order = {
   subtotal: number;
   shipping_fee: number;
   total: number;
+  points_used: number;
+  points_earned: number;
   contact_name: string;
   contact_email: string;
   contact_phone: string;
@@ -52,6 +62,8 @@ export type Order = {
   created_at: string;
 };
 
+export type PurchaseMode = "buyout" | "rental" | "journey" | "membership";
+
 export type OrderItem = {
   id: string;
   order_id: string;
@@ -59,6 +71,8 @@ export type OrderItem = {
   name: string;
   unit_price: number;
   quantity: number;
+  purchase_mode: PurchaseMode;
+  tier_slug: string | null;
 };
 
 export type QuoteLineItem = {
@@ -108,4 +122,41 @@ export type RateCardItem = {
   unit?: string;
   min_quantity?: number;
   note?: string;
+};
+
+// ---------- 小時光:會員等級 / 點數 / 預約參訪 ----------
+export type MembershipTier = {
+  slug: string;
+  name: string;
+  price_yearly: number;
+  rebate_rate: number; // 每消費 NT$100 累點數(%)
+  perks: string[];
+  sort: number;
+};
+
+export type PointsSource = "earn" | "redeem" | "expire" | "refund" | "manual_adjust" | "promo";
+
+export type PointsLedgerEntry = {
+  id: string;
+  user_id: string;
+  delta: number;
+  source: PointsSource;
+  source_ref_id: string | null;
+  note: string | null;
+  expires_at: string | null;
+  created_at: string;
+};
+
+export type BookingStatus = "new" | "confirmed" | "done" | "cancelled";
+
+export type Booking = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  visit_date: string | null;
+  purpose: string | null;
+  message: string | null;
+  status: BookingStatus;
+  created_at: string;
 };

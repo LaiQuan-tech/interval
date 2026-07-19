@@ -8,6 +8,8 @@ export type CompanyProfile = {
   phone: string;
   bank_info?: string; // 匯款資訊,顯示在銀行轉帳訂單頁
   about?: string;
+  address?: string; // 門市地址(預約參訪頁用)
+  hours?: string;   // 營業時間(預約參訪頁用)
 };
 
 export type QuoteConfig = {
@@ -32,8 +34,8 @@ export async function getSetting<T>(key: string, fallback: T): Promise<T> {
 
 export async function getCompanyProfile(): Promise<CompanyProfile> {
   return getSetting<CompanyProfile>("company_profile", {
-    name: "interval",
-    tagline: "賣到全世界",
+    name: "小時光 Little Moments",
+    tagline: "為懂得生活的人，典藏值得停留的時光",
     email: "",
     phone: "",
   });

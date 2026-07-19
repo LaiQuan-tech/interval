@@ -15,7 +15,7 @@
  *   ADMIN_EMAIL=you@example.com ADMIN_PASSWORD=你的密碼 \
  *   node scripts/provision.mjs
  *
- * 選填:ANTHROPIC_API_KEY(AI 報價)、SUPABASE_ORG_ID、GITHUB_REPO、PROJECT_NAME
+ * 選填:GEMINI_API_KEY(AI 報價)、SUPABASE_ORG_ID、GITHUB_REPO、PROJECT_NAME
  * 冪等:重複執行會沿用既有資源,不會重複建立。
  */
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -30,7 +30,7 @@ const ENV = {
   VERCEL_TOKEN: process.env.VERCEL_TOKEN,
   RAILWAY_TOKEN: process.env.RAILWAY_TOKEN,
   RESEND_API_KEY: process.env.RESEND_API_KEY ?? "",
-  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ?? "",
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY ?? "",
   ADMIN_EMAIL: process.env.ADMIN_EMAIL ?? "",
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD ?? "",
   SUPABASE_ORG_ID: process.env.SUPABASE_ORG_ID ?? "",
@@ -244,9 +244,9 @@ async function provisionVercel(sb) {
     ["SUPABASE_SERVICE_ROLE_KEY", sb.serviceKey],
     ["NEXT_PUBLIC_SITE_URL", prodUrl],
     ["RESEND_API_KEY", ENV.RESEND_API_KEY],
-    ["RESEND_FROM", "interval <onboarding@resend.dev>"],
+    ["RESEND_FROM", "小時光 Little Moments <no-reply@gathertaiwan.com>"],
     ["CONTACT_NOTIFY_TO", ENV.ADMIN_EMAIL],
-    ["ANTHROPIC_API_KEY", ENV.ANTHROPIC_API_KEY],
+    ["GEMINI_API_KEY", ENV.GEMINI_API_KEY],
   ].filter(([, v]) => v);
 
   const upsert = await api(`${VC}/v10/projects/${project.id}/env?upsert=true`, {
@@ -367,7 +367,7 @@ async function provisionRailway(sb, vercel) {
           SUPABASE_URL: sb.supabaseUrl,
           SUPABASE_SERVICE_ROLE_KEY: sb.serviceKey,
           RESEND_API_KEY: ENV.RESEND_API_KEY,
-          RESEND_FROM: "interval <onboarding@resend.dev>",
+          RESEND_FROM: "小時光 Little Moments <no-reply@gathertaiwan.com>",
           SITE_URL: vercel.prodUrl,
           JOB_SECRET: jobSecret,
           QUOTE_FOLLOWUP_DAYS: "3",

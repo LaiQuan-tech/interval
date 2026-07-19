@@ -57,8 +57,12 @@ export default async function ProductDetailPage({
     <div className="lm-container py-12 sm:py-16">
       <div className="grid gap-10 lg:grid-cols-2 lg:gap-14">
         <Placeholder
+          src={product.images?.[0]?.url}
+          alt={product.name}
           gradient={gradient}
           label={metadata?.tag}
+          sizes="(max-width: 1024px) 100vw, 50vw"
+          priority
           className="aspect-square w-full"
         />
 

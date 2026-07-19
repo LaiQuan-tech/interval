@@ -31,7 +31,14 @@ export default async function JourneysPage() {
     <div>
       {/* 全幅主視覺 */}
       <div className="relative h-96 overflow-hidden bg-[#e4d6bd] sm:h-115">
-        <Placeholder label="Full-bleed journey scene — 旅程主視覺" className="absolute inset-0" />
+        <Placeholder
+          src="/scenes/journeys-hero.jpg"
+          alt="私人旅程主視覺"
+          label="Full-bleed journey scene — 旅程主視覺"
+          sizes="100vw"
+          priority
+          className="absolute inset-0"
+        />
         <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-b from-ink-deep/10 to-ink-deep/60 px-6 py-10 sm:px-16 sm:py-15">
           <div className="lm-container !px-0">
             <div className="mb-4 font-cormorant text-[19px] italic text-gold-bright sm:text-[21px]">
@@ -60,7 +67,13 @@ export default async function JourneysPage() {
                   key={j.id}
                   className="grid grid-cols-1 gap-6 bg-paper p-6 sm:gap-10 sm:p-11 lg:grid-cols-[0.9fr_1.5fr_0.6fr] lg:items-center"
                 >
-                  <Placeholder label={`journey · ${j.name.split("．")[0]}`} className="h-40" />
+                  <Placeholder
+                    src={j.images?.[0]?.url}
+                    alt={j.name}
+                    label={`journey · ${j.name.split("．")[0]}`}
+                    sizes="(max-width: 1024px) 100vw, 30vw"
+                    className="h-40"
+                  />
                   <div>
                     <h3 className="mb-2.5 font-serif text-[21px] font-medium text-ink sm:text-[24px]">
                       {j.name}

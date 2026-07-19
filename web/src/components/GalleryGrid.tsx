@@ -40,6 +40,8 @@ export default function GalleryGrid({ works }: { works: Product[] }) {
             return (
               <Link key={w.id} href={`/products/${w.slug}`} className="group block">
                 <Placeholder
+                  src={w.images?.[0]?.url}
+                  alt={w.name}
                   gradient={metadata?.gradient ?? gradientForId(w.id)}
                   label={metadata?.tag}
                   className="h-70 sm:h-80"

@@ -18,7 +18,13 @@ export default async function BookingPage() {
           <p className="mb-10 max-w-110 text-[15.5px] leading-[2.05] text-ink-soft">
             歡迎親臨小時光書店門市，在靜謐的空間中鑑賞畫作、洽談租賃買斷或規劃您的私人旅程。我們將為您保留專屬時段。
           </p>
-          <Placeholder label="Bookstore interior — 門市空間" className="mb-8 h-70" />
+          <Placeholder
+            src="/scenes/bookstore-interior.jpg"
+            alt="小時光書店門市空間"
+            label="Bookstore interior — 門市空間"
+            sizes="(max-width: 1024px) 100vw, 45vw"
+            className="mb-8 h-70"
+          />
           <div className="flex flex-col gap-4.5 text-[14px] leading-[1.7] text-nav">
             <div>
               <span className="lm-caption text-[12px]">Address</span>

@@ -57,10 +57,29 @@ export default async function HomePage() {
 
       {/* ===== 主視覺圖組 ===== */}
       <section className="lm-container grid grid-cols-1 gap-0.5 pb-16 sm:pb-24 lg:grid-cols-[1.4fr_1fr]">
-        <Placeholder label="Signature artwork — 招牌畫作" className="h-70 lg:h-110" />
+        <Placeholder
+          src={artworks[0]?.images?.[0]?.url}
+          alt={artworks[0]?.name}
+          label="Signature artwork — 招牌畫作"
+          sizes="(max-width: 1024px) 100vw, 55vw"
+          priority
+          className="h-70 lg:h-110"
+        />
         <div className="flex flex-col gap-0.5">
-          <Placeholder label="detail 01" className="min-h-54 flex-1" />
-          <Placeholder label="detail 02" className="min-h-54 flex-1" />
+          <Placeholder
+            src={artworks[1]?.images?.[0]?.url}
+            alt={artworks[1]?.name}
+            label="detail 01"
+            sizes="(max-width: 1024px) 100vw, 40vw"
+            className="min-h-54 flex-1"
+          />
+          <Placeholder
+            src={artworks[2]?.images?.[0]?.url}
+            alt={artworks[2]?.name}
+            label="detail 02"
+            sizes="(max-width: 1024px) 100vw, 40vw"
+            className="min-h-54 flex-1"
+          />
         </div>
       </section>
 
@@ -129,6 +148,8 @@ export default async function HomePage() {
               return (
                 <Link key={a.id} href={`/products/${a.slug}`} className="group block">
                   <Placeholder
+                    src={a.images?.[0]?.url}
+                    alt={a.name}
                     gradient={metadata?.gradient ?? gradientForId(a.id)}
                     className="h-64 sm:h-75"
                   />

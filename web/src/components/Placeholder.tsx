@@ -18,14 +18,24 @@ export function gradientForId(id: string): [string, string] {
   return FALLBACK_GRADIENTS[hash % FALLBACK_GRADIENTS.length];
 }
 
+import Image from "next/image";
+
 export default function Placeholder({
   gradient,
   label,
+  src,
+  alt,
+  sizes = "(max-width: 768px) 100vw, 33vw",
+  priority = false,
   className = "",
   style,
 }: {
   gradient?: [string, string] | null;
   label?: string;
+  src?: string | null;
+  alt?: string;
+  sizes?: string;
+  priority?: boolean;
   className?: string;
   style?: React.CSSProperties;
 }) {
@@ -36,8 +46,20 @@ export default function Placeholder({
   return (
     <div
       className={`lm-ph ${className}`}
-      data-label={label}
+      // 有真圖時不顯示開發用的佔位標籤
+      data-label={src ? undefined : label}
       style={{ backgroundImage, ...style }}
-    />
+    >
+      {src && (
+        <Image
+          src={src}
+          alt={alt ?? label ?? ""}
+          fill
+          sizes={sizes}
+          priority={priority}
+          className="object-cover"
+        />
+      )}
+    </div>
   );
 }

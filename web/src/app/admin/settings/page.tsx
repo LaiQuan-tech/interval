@@ -15,6 +15,11 @@ export default async function AdminSettingsPage() {
         companyProfile={JSON.stringify(settings.company_profile ?? {}, null, 2)}
         rateCard={JSON.stringify(settings.rate_card ?? {}, null, 2)}
         quoteConfig={JSON.stringify(settings.quote_config ?? {}, null, 2)}
+        shipping={JSON.stringify(
+          settings.shipping ?? { fee_home: 200, free_threshold_home: 10000, deadline_days: 3 },
+          null,
+          2
+        )}
       />
     </div>
   );

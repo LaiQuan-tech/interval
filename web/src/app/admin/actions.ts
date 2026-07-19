@@ -283,7 +283,7 @@ export async function updateBookingStatus(bookingId: string, next: string) {
 // ---------- 設定 ----------
 export async function saveSetting(key: string, jsonValue: string) {
   await requireAdmin();
-  if (!["company_profile", "rate_card", "quote_config"].includes(key)) {
+  if (!["company_profile", "rate_card", "quote_config", "shipping"].includes(key)) {
     throw new Error("不允許的設定鍵");
   }
   let value: unknown;

@@ -1,13 +1,15 @@
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCompanyProfile } from "@/lib/settings";
+import { getCompanyProfile, getShippingConfig } from "@/lib/settings";
 import {
+  formatDate,
   formatDateTime,
   formatTWD,
   ORDER_STATUS_LABEL,
   PAYMENT_METHOD_LABEL,
   PURCHASE_MODE_LABEL,
 } from "@/lib/format";
+import PaymentReportForm from "@/components/PaymentReportForm";
 import type { Order, OrderItem } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -55,7 +57,19 @@ export default async function OrderPage({
 
   if (!order) notFound();
 
-  const company = await getCompanyProfile();
+  const [company, shippingConfig] = await Promise.all([getCompanyProfile(), getShippingConfig()]);
+  const deadline = new Date(order.created_at);
+  deadline.setDate(deadline.getDate() + shippingConfig.deadline_days);
+
+  const invoiceSummary = (() => {
+    if (!order.invoice?.type) return null;
+    if (order.invoice.type === "company") {
+      return `統一編號 ${order.invoice.tax_id ?? "—"} ／抬頭 ${order.invoice.title ?? "—"}`;
+    }
+    return order.invoice.carrier
+      ? `雲端發票(手機條碼 ${order.invoice.carrier})`
+      : "雲端發票(個人)";
+  })();
 
   return (
     <div className="lm-container max-w-135 py-10 sm:py-16">
@@ -79,7 +93,17 @@ export default async function OrderPage({
         <div className="mt-5 space-y-1.5 border-t border-line pt-5 text-sm">
           <p><span className="text-ink-soft">訂購時間：</span>{formatDateTime(order.created_at)}</p>
           <p><span className="text-ink-soft">收件人：</span>{order.contact_name}</p>
-          <p><span className="text-ink-soft">收件地址：</span>{order.shipping_address || "—"}</p>
+          {order.shipping_method !== "none" && (
+            <p>
+              <span className="text-ink-soft">
+                {order.shipping_method === "pickup" ? "取貨方式：" : "收件地址："}
+              </span>
+              {order.shipping_method === "pickup" ? "門市自取" : order.shipping_address || "—"}
+            </p>
+          )}
+          {invoiceSummary && (
+            <p><span className="text-ink-soft">發票：</span>{invoiceSummary}</p>
+          )}
           <p><span className="text-ink-soft">付款方式：</span>{PAYMENT_METHOD_LABEL[order.payment_method] ?? order.payment_method}</p>
         </div>
 
@@ -128,8 +152,13 @@ export default async function OrderPage({
               <p className="font-medium text-ink">匯款資訊</p>
               <p className="mt-1 whitespace-pre-wrap text-ink-soft">{company.bank_info}</p>
               <p className="mt-2 text-ink-soft">
+                應付金額：<span className="font-semibold text-ink">{formatTWD(order.total)}</span>
+              </p>
+              <p className="text-ink-soft">匯款期限：{formatDate(deadline)} 前</p>
+              <p className="mt-2 text-ink-soft">
                 完成匯款後我們會盡快確認並安排出貨。
               </p>
+              <PaymentReportForm token={token} initialReport={order.payment_report} />
             </div>
           )}
       </div>

@@ -8,6 +8,7 @@ import {
   ORDER_STATUS_LABEL,
   PAYMENT_METHOD_LABEL,
   PURCHASE_MODE_LABEL,
+  SHIPPING_METHOD_LABEL,
 } from "@/lib/format";
 import OrderStatusButtons from "@/components/admin/OrderStatusButtons";
 import type { Order, OrderItem } from "@/lib/types";
@@ -57,7 +58,23 @@ export default async function AdminOrderDetailPage({
           <p><span className="text-ink-soft">姓名:</span>{typedOrder.contact_name}</p>
           <p><span className="text-ink-soft">Email:</span>{typedOrder.contact_email}</p>
           <p><span className="text-ink-soft">電話:</span>{typedOrder.contact_phone}</p>
-          <p><span className="text-ink-soft">地址:</span>{typedOrder.shipping_address || "—"}</p>
+          <p>
+            <span className="text-ink-soft">收件方式:</span>
+            {SHIPPING_METHOD_LABEL[typedOrder.shipping_method] ?? typedOrder.shipping_method}
+          </p>
+          {typedOrder.shipping_method !== "none" && (
+            <p><span className="text-ink-soft">地址:</span>{typedOrder.shipping_address || "—"}</p>
+          )}
+          {typedOrder.invoice?.type && (
+            <p>
+              <span className="text-ink-soft">發票:</span>
+              {typedOrder.invoice.type === "company"
+                ? `統編 ${typedOrder.invoice.tax_id ?? "—"} ／抬頭 ${typedOrder.invoice.title ?? "—"}`
+                : typedOrder.invoice.carrier
+                  ? `雲端發票(手機條碼 ${typedOrder.invoice.carrier})`
+                  : "雲端發票(個人)"}
+            </p>
+          )}
           <p><span className="text-ink-soft">付款方式:</span>{PAYMENT_METHOD_LABEL[typedOrder.payment_method]}</p>
           <p><span className="text-ink-soft">成立時間:</span>{formatDateTime(typedOrder.created_at)}</p>
           {typedOrder.paid_at && (
@@ -112,6 +129,14 @@ export default async function AdminOrderDetailPage({
           )}
         </div>
       </section>
+
+      {typedOrder.payment_report && (
+        <section className="iv-card text-sm">
+          <h3 className="mb-2 font-bold">客戶回報匯款</h3>
+          <p><span className="text-ink-soft">末五碼:</span><span className="font-semibold">{typedOrder.payment_report.last5}</span></p>
+          <p><span className="text-ink-soft">回報時間:</span>{formatDateTime(typedOrder.payment_report.reported_at)}</p>
+        </section>
+      )}
 
       <section className="iv-card">
         <h3 className="mb-3 font-bold">變更狀態</h3>

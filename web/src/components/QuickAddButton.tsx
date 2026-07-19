@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { addToCart } from "@/lib/cart";
+import { addToCart, openCart } from "@/lib/cart";
 import type { PurchaseMode } from "@/lib/types";
 
 // 精簡版加入購物車(旅程列 / 會員方案卡用):固定數量 1,無數量選擇器
@@ -29,6 +29,7 @@ export default function QuickAddButton({
           { productId: product.id, slug: product.slug, name: product.name, price: unitPrice, mode },
           1
         );
+        openCart();
         setAdded(true);
         setTimeout(() => setAdded(false), 1800);
       }}

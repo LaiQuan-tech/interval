@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { addToCart } from "@/lib/cart";
+import { addToCart, openCart } from "@/lib/cart";
 import type { PurchaseMode } from "@/lib/types";
 
 type MinimalProduct = { id: string; slug: string; name: string };
@@ -45,6 +45,7 @@ export default function AddToCartButton({
     if (goCheckout) {
       router.push("/cart");
     } else {
+      openCart();
       setAdded(true);
       setTimeout(() => setAdded(false), 1600);
     }

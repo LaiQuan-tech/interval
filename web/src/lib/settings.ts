@@ -18,6 +18,12 @@ export type QuoteConfig = {
   followup_days: number;
 };
 
+export type ShippingConfig = {
+  fee_home: number; // 宅配運費(NT$)
+  free_threshold_home: number; // 宅配免運門檻(以實體商品小計計算)
+  deadline_days: number; // 銀行轉帳訂單的繳費期限(天)
+};
+
 export async function getSetting<T>(key: string, fallback: T): Promise<T> {
   try {
     const supabase = createAdminClient();
@@ -50,5 +56,13 @@ export async function getQuoteConfig(): Promise<QuoteConfig> {
     valid_days: 14,
     tax_rate: 0.05,
     followup_days: 3,
+  });
+}
+
+export async function getShippingConfig(): Promise<ShippingConfig> {
+  return getSetting<ShippingConfig>("shipping", {
+    fee_home: 200,
+    free_threshold_home: 10000,
+    deadline_days: 3,
   });
 }

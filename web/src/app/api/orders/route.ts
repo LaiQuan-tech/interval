@@ -2,10 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { emailShell, notifyAdmin, sendMail, siteUrl } from "@/lib/resend";
-import { getCompanyProfile } from "@/lib/settings";
-import { formatTWD, PAYMENT_METHOD_LABEL, PURCHASE_MODE_LABEL } from "@/lib/format";
+import { getCompanyProfile, getShippingConfig } from "@/lib/settings";
+import {
+  formatDate,
+  formatTWD,
+  PAYMENT_METHOD_LABEL,
+  PURCHASE_MODE_LABEL,
+  SHIPPING_METHOD_LABEL,
+} from "@/lib/format";
 import { getPointsBalance, redeemPointsForOrder } from "@/lib/points";
-import type { PurchaseMode } from "@/lib/types";
+import { createPayment, isCardPaymentAvailable } from "@/lib/payments";
+import type { InvoiceType, PurchaseMode, ShippingMethod } from "@/lib/types";
+
+const PHONE_RE = /^09\d{8}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CARRIER_RE = /^\/[0-9A-Z.+-]{7}$/;
+const TAX_ID_RE = /^\d{8}$/;
+const UNIQUE_VIOLATION = "23505";
 
 type CheckoutItem = {
   productId: string;
@@ -19,10 +32,22 @@ type CheckoutBody = {
     name: string;
     email: string;
     phone: string;
-    address: string;
-    payment_method: string;
     note: string;
   };
+  shipping?: {
+    method?: string;
+    county?: string;
+    district?: string;
+    postal?: string;
+    detail?: string;
+  };
+  invoice?: {
+    type?: string;
+    carrier?: string;
+    tax_id?: string;
+    title?: string;
+  };
+  payment_method: string;
   pointsUsed?: number;
 };
 
@@ -47,6 +72,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "格式錯誤" }, { status: 400 });
   }
 
+  const supabase = tryCreateAdminClient();
+  if (!supabase) {
+    return NextResponse.json({ error: "系統尚未完成設定,請稍後再試" }, { status: 503 });
+  }
+
+  // Idempotency-Key:同一 key 已有訂單就直接回傳既有訂單,不重複建單、不報錯
+  const idempotencyKey = req.headers.get("Idempotency-Key")?.trim().slice(0, 100) || null;
+  if (idempotencyKey) {
+    const { data: existing } = await supabase
+      .from("orders")
+      .select("public_token")
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle();
+    if (existing) {
+      return NextResponse.json({ orderToken: existing.public_token });
+    }
+  }
+
   const items = (body.items ?? []).filter(
     (i) =>
       i?.productId &&
@@ -56,16 +99,13 @@ export async function POST(req: NextRequest) {
       (i.mode === undefined || VALID_MODES.includes(i.mode))
   );
   const contact = body.contact;
-  if (items.length === 0 || !contact?.name || !contact?.email || !contact?.phone || !contact?.address) {
-    return NextResponse.json({ error: "缺少必要欄位" }, { status: 400 });
-  }
-  const paymentMethod = ["bank_transfer", "cod"].includes(contact.payment_method)
-    ? contact.payment_method
-    : "bank_transfer";
-
-  const supabase = tryCreateAdminClient();
-  if (!supabase) {
-    return NextResponse.json({ error: "系統尚未完成設定,請稍後再試" }, { status: 503 });
+  if (
+    items.length === 0 ||
+    !contact?.name?.trim() ||
+    !EMAIL_RE.test(contact?.email?.trim() ?? "") ||
+    !PHONE_RE.test(contact?.phone?.trim() ?? "")
+  ) {
+    return NextResponse.json({ error: "缺少必要欄位或格式錯誤" }, { status: 400 });
   }
 
   // 價格一律以資料庫為準,不信任前端
@@ -140,7 +180,79 @@ export async function POST(req: NextRequest) {
   }
 
   const subtotal = lineItems.reduce((s, i) => s + i.unit_price * i.quantity, 0);
-  const shippingFee = 0; // 政策:免運(之後可依 settings 調整)
+  const hasPhysical = lineItems.some(
+    (i) => i.purchase_mode === "buyout" || i.purchase_mode === "rental"
+  );
+
+  const [company, shippingConfig] = await Promise.all([getCompanyProfile(), getShippingConfig()]);
+
+  // ---------- 收件方式 + 運費(伺服器算,不信任前端) ----------
+  let shippingMethod: ShippingMethod;
+  let shippingAddress = "";
+  let shippingFee = 0;
+
+  if (!hasPhysical) {
+    shippingMethod = "none";
+  } else {
+    const requestedMethod = body.shipping?.method;
+    if (requestedMethod !== "home" && requestedMethod !== "pickup") {
+      return NextResponse.json({ error: "請選擇收件方式" }, { status: 400 });
+    }
+    shippingMethod = requestedMethod;
+
+    if (shippingMethod === "pickup") {
+      shippingAddress = company.address ?? "";
+      shippingFee = 0;
+    } else {
+      const county = (body.shipping?.county ?? "").trim().slice(0, 20);
+      const district = (body.shipping?.district ?? "").trim().slice(0, 30);
+      const postal = (body.shipping?.postal ?? "").trim().slice(0, 10);
+      const detail = (body.shipping?.detail ?? "").trim().slice(0, 200);
+      if (!county || !district || !detail) {
+        return NextResponse.json({ error: "請填寫完整收件地址" }, { status: 400 });
+      }
+      shippingAddress = `${postal ? postal + " " : ""}${county}${district}${detail}`.slice(0, 300);
+
+      const physicalSubtotal = lineItems
+        .filter((i) => i.purchase_mode === "buyout" || i.purchase_mode === "rental")
+        .reduce((s, i) => s + i.unit_price * i.quantity, 0);
+      shippingFee =
+        physicalSubtotal >= shippingConfig.free_threshold_home ? 0 : shippingConfig.fee_home;
+    }
+  }
+
+  // ---------- 發票(收欄位先存檔不開立) ----------
+  const requestedInvoiceType: InvoiceType =
+    body.invoice?.type === "company" ? "company" : "personal";
+  let invoice: { type: InvoiceType; carrier?: string; tax_id?: string; title?: string };
+  if (requestedInvoiceType === "company") {
+    const taxId = (body.invoice?.tax_id ?? "").trim();
+    const title = (body.invoice?.title ?? "").trim().slice(0, 100);
+    if (!TAX_ID_RE.test(taxId) || !title) {
+      return NextResponse.json({ error: "請填寫正確的統一編號與公司抬頭" }, { status: 400 });
+    }
+    invoice = { type: "company", tax_id: taxId, title };
+  } else {
+    const carrier = (body.invoice?.carrier ?? "").trim().slice(0, 20);
+    if (carrier && !CARRIER_RE.test(carrier)) {
+      return NextResponse.json({ error: "手機條碼格式錯誤" }, { status: 400 });
+    }
+    invoice = { type: "personal", ...(carrier ? { carrier } : {}) };
+  }
+
+  // ---------- 付款方式 ----------
+  const requestedPayment = body.payment_method;
+  let paymentMethod: string;
+  if (requestedPayment === "card") {
+    if (!isCardPaymentAvailable()) {
+      return NextResponse.json({ error: "刷卡功能尚未開放,請選擇其他付款方式" }, { status: 400 });
+    }
+    paymentMethod = "card";
+  } else if (["bank_transfer", "cod"].includes(requestedPayment)) {
+    paymentMethod = requestedPayment;
+  } else {
+    paymentMethod = "bank_transfer";
+  }
 
   // 登入使用者綁定訂單
   let userId: string | null = null;
@@ -186,14 +298,29 @@ export async function POST(req: NextRequest) {
       contact_name: contact.name.slice(0, 100),
       contact_email: contact.email.slice(0, 200),
       contact_phone: contact.phone.slice(0, 50),
-      shipping_address: contact.address.slice(0, 300),
+      shipping_address: shippingAddress,
+      shipping_method: shippingMethod,
+      invoice,
       payment_method: paymentMethod,
       note: (contact.note ?? "").slice(0, 1000),
+      idempotency_key: idempotencyKey,
     })
     .select("*")
     .single();
 
   if (orderErr || !order) {
+    // 併發下同一 Idempotency-Key 兩個請求都通過了前面的預查 → 其中一個會撞 unique 衝突,
+    // 回傳既有訂單而不是報錯,確保重試/雙擊永遠拿到同一張訂單
+    if (orderErr?.code === UNIQUE_VIOLATION && idempotencyKey) {
+      const { data: raced } = await supabase
+        .from("orders")
+        .select("public_token")
+        .eq("idempotency_key", idempotencyKey)
+        .maybeSingle();
+      if (raced) {
+        return NextResponse.json({ orderToken: raced.public_token });
+      }
+    }
     console.error("[orders] insert failed:", orderErr);
     return NextResponse.json({ error: "訂單建立失敗" }, { status: 500 });
   }
@@ -226,21 +353,37 @@ export async function POST(req: NextRequest) {
       .gte("stock", line.quantity);
   }
 
+  // ECPay 介面預留:bank_transfer/cod 一律回 null,走現行流程;card 目前金鑰未設定同樣回 null
+  const paymentResult = await createPayment(paymentMethod, {
+    id: order.id,
+    order_no: order.order_no,
+    total: order.total,
+    contact_name: order.contact_name,
+    contact_email: order.contact_email,
+    public_token: order.public_token,
+  });
+
   // 通知信
-  const company = await getCompanyProfile();
   const itemRows = lineItems
     .map(
       (i) =>
         `<tr><td style="padding:6px 0;">${i.name}(${PURCHASE_MODE_LABEL[i.purchase_mode]}) × ${i.quantity}</td><td style="text-align:right;">${formatTWD(i.unit_price * i.quantity)}</td></tr>`
     )
     .join("");
+  const shippingRow =
+    shippingFee > 0
+      ? `<tr><td style="padding:6px 0;">運費(${SHIPPING_METHOD_LABEL[shippingMethod]})</td><td style="text-align:right;">${formatTWD(shippingFee)}</td></tr>`
+      : "";
   const pointsRow =
     pointsUsed > 0
       ? `<tr><td style="padding:6px 0;">點數折抵</td><td style="text-align:right;">-${formatTWD(pointsUsed)}</td></tr>`
       : "";
+  const deadline = new Date(order.created_at);
+  deadline.setDate(deadline.getDate() + shippingConfig.deadline_days);
   const bankInfo =
     paymentMethod === "bank_transfer" && company.bank_info
-      ? `<p style="background:#f4ede0;border-radius:4px;padding:12px;margin-top:16px;">匯款資訊:<br/>${company.bank_info.replace(/\n/g, "<br/>")}</p>`
+      ? `<p style="background:#f4ede0;border-radius:4px;padding:12px;margin-top:16px;">匯款資訊:<br/>${company.bank_info.replace(/\n/g, "<br/>")}
+         <br/>應付金額:${formatTWD(order.total)}<br/>匯款期限:${formatDate(deadline)} 前</p>`
       : "";
 
   await sendMail({
@@ -249,7 +392,7 @@ export async function POST(req: NextRequest) {
     html: emailShell(
       `訂單 ${order.order_no} 已成立`,
       `<p>${order.contact_name} 您好,感謝您的訂購!</p>
-       <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:8px;">${itemRows}${pointsRow}</table>
+       <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:8px;">${itemRows}${shippingRow}${pointsRow}</table>
        <p style="font-weight:700;margin-top:12px;">合計 ${formatTWD(order.total)}(${PAYMENT_METHOD_LABEL[paymentMethod]})</p>
        ${bankInfo}
        <p style="margin-top:16px;"><a href="${siteUrl()}/orders/${order.public_token}">查看訂單狀態</a></p>`
@@ -260,11 +403,14 @@ export async function POST(req: NextRequest) {
     emailShell(
       "收到新訂單",
       `<p>${order.contact_name} / ${order.contact_email} / ${order.contact_phone}</p>
-       <table style="width:100%;border-collapse:collapse;font-size:14px;">${itemRows}${pointsRow}</table>
+       <table style="width:100%;border-collapse:collapse;font-size:14px;">${itemRows}${shippingRow}${pointsRow}</table>
        <p style="font-weight:700;">合計 ${formatTWD(order.total)}(${PAYMENT_METHOD_LABEL[paymentMethod]})</p>
        <p><a href="${siteUrl()}/admin/orders/${order.id}">前往後台處理</a></p>`
     )
   );
 
-  return NextResponse.json({ orderToken: order.public_token });
+  return NextResponse.json({
+    orderToken: order.public_token,
+    ...(paymentResult ? { redirectUrl: paymentResult.redirectUrl } : {}),
+  });
 }

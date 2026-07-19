@@ -40,6 +40,24 @@ export type OrderStatus =
   | "completed"
   | "cancelled";
 
+export type ShippingMethod = "home" | "pickup" | "none";
+
+export type InvoiceType = "personal" | "company";
+
+// 收欄位先存檔不開立;company 才需要 tax_id/title,personal 的 carrier 為選填手機條碼
+export type Invoice = {
+  type?: InvoiceType;
+  carrier?: string;
+  tax_id?: string;
+  title?: string;
+};
+
+// 客戶於完成頁回報的匯款帳號末五碼
+export type PaymentReport = {
+  last5: string;
+  reported_at: string;
+};
+
 export type Order = {
   id: string;
   order_no: string;
@@ -55,9 +73,13 @@ export type Order = {
   contact_email: string;
   contact_phone: string;
   shipping_address: string;
+  shipping_method: ShippingMethod;
+  invoice: Invoice;
+  payment_report: PaymentReport | null;
   payment_method: "bank_transfer" | "cod" | "card" | "other";
   note: string;
   public_token: string;
+  idempotency_key: string | null;
   paid_at: string | null;
   created_at: string;
 };
@@ -114,7 +136,11 @@ export type Quote = {
   created_at: string;
 };
 
-export type ChatMessage = { role: "user" | "assistant"; content: string };
+export type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+  imageUrl?: string; // 居家擺放模擬:客人空間照 / AI 合成模擬圖的公開網址
+};
 
 export type RateCardItem = {
   name: string;

@@ -57,6 +57,17 @@ export const PURCHASE_MODE_LABEL: Record<string, string> = {
   membership: "會員方案",
 };
 
+export const SHIPPING_METHOD_LABEL: Record<string, string> = {
+  home: "宅配到府",
+  pickup: "門市自取",
+  none: "無需配送",
+};
+
+export const INVOICE_TYPE_LABEL: Record<string, string> = {
+  personal: "個人(雲端發票)",
+  company: "公司(統編發票)",
+};
+
 export const BOOKING_STATUS_LABEL: Record<string, string> = {
   new: "待處理",
   confirmed: "已確認",

@@ -1,6 +1,8 @@
 import CheckoutForm from "@/components/CheckoutForm";
 import { createClient } from "@/lib/supabase/server";
 import { getPointsBalance } from "@/lib/points";
+import { getCompanyProfile, getShippingConfig } from "@/lib/settings";
+import { isCardPaymentAvailable } from "@/lib/payments";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "結帳" };
@@ -20,5 +22,15 @@ export default async function CheckoutPage() {
     /* env 未設定 */
   }
 
-  return <CheckoutForm isLoggedIn={isLoggedIn} pointsBalance={pointsBalance} />;
+  const [company, shippingConfig] = await Promise.all([getCompanyProfile(), getShippingConfig()]);
+
+  return (
+    <CheckoutForm
+      isLoggedIn={isLoggedIn}
+      pointsBalance={pointsBalance}
+      company={company}
+      shippingConfig={shippingConfig}
+      ecpayAvailable={isCardPaymentAvailable()}
+    />
+  );
 }

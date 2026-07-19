@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { CART_EVENT, cartCount, readCart } from "@/lib/cart";
+import { CART_EVENT, cartCount, openCart, readCart } from "@/lib/cart";
 
+// 點擊開啟購物車 flyout(取代直接導向 /cart;/cart 頁仍保留,可從 flyout 內連過去)
 export default function CartLink() {
   const [count, setCount] = useState(0);
 
@@ -19,8 +19,9 @@ export default function CartLink() {
   }, []);
 
   return (
-    <Link
-      href="/cart"
+    <button
+      type="button"
+      onClick={() => openCart()}
       aria-label="購物車"
       className="relative flex h-11 w-11 items-center justify-center text-ink-deep hover:bg-panel"
     >
@@ -34,6 +35,6 @@ export default function CartLink() {
           {count > 99 ? "99+" : count}
         </span>
       )}
-    </Link>
+    </button>
   );
 }

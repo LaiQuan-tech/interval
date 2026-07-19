@@ -15,6 +15,19 @@ export type CartItem = {
 
 const KEY = "littlemoments-cart";
 export const CART_EVENT = "littlemoments:cart-updated";
+// 加入購物車後通知 flyout 自動滑出(與 CART_EVENT 分開,因為「內容變了」不代表「要打開」——
+// 例如 flyout 自己呼叫 updateQuantity 調整數量時只需要重繪,不需要重新滑出)
+export const CART_OPEN_EVENT = "littlemoments:cart-open";
+
+export function openCart() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(CART_OPEN_EVENT));
+}
+
+// 實體商品(買斷/月租的藝術品)才需要配送;旅程與會員方案是服務類商品,結帳時不顯示收件區塊、不計運費
+export function isPhysicalItem(item: Pick<CartItem, "mode">) {
+  return item.mode === "buyout" || item.mode === "rental";
+}
 
 export function readCart(): CartItem[] {
   if (typeof window === "undefined") return [];

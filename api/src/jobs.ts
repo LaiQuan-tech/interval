@@ -70,20 +70,40 @@ export async function runFollowupJobs() {
     }
   }
 
-  // 3. 未付款訂單提醒:pending 超過 N 天且未提醒過
+  // 3. 未付款訂單提醒:pending 超過 N 天且未提醒過(轉帳訂單文案帶繳費期限,讀 settings.shipping.deadline_days)
+  const { data: shippingSetting } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", "shipping")
+    .maybeSingle();
+  const deadlineDays =
+    typeof (shippingSetting?.value as { deadline_days?: number } | undefined)?.deadline_days ===
+    "number"
+      ? (shippingSetting!.value as { deadline_days: number }).deadline_days
+      : 3;
+
   const { data: staleOrders } = await supabase
     .from("orders")
-    .select("id, order_no, contact_email, contact_name, public_token, note")
+    .select("id, order_no, contact_email, contact_name, public_token, note, created_at, payment_method")
     .eq("status", "pending")
     .lt("created_at", cutoff)
     .not("contact_email", "eq", "");
 
   for (const o of staleOrders ?? []) {
     if (o.note?.includes("[reminded]")) continue;
+    const deadlineText =
+      o.payment_method === "bank_transfer"
+        ? (() => {
+            const d = new Date(o.created_at);
+            d.setDate(d.getDate() + deadlineDays);
+            return `<p>請於 ${d.toLocaleDateString("zh-TW")} 前完成匯款,逾期訂單可能會被取消。</p>`;
+          })()
+        : "";
     const ok = await sendEmail(
       o.contact_email,
       `【小時光】訂單 ${o.order_no} 付款提醒`,
       `<p>${o.contact_name || "您好"},您的訂單尚未完成付款:</p>
+       ${deadlineText}
        <p><a href="${SITE()}/orders/${o.public_token}">查看訂單 ${o.order_no}</a></p>`
     );
     if (ok) {

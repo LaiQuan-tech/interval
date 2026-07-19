@@ -19,17 +19,24 @@ const SECTIONS = [
     title: "報價參數",
     hint: '例:{"valid_days": 14, "tax_rate": 0.05, "followup_days": 3}(有效天數 / 稅率 / 追蹤提醒天數)',
   },
+  {
+    key: "shipping",
+    title: "運費設定",
+    hint: '例:{"fee_home": 200, "free_threshold_home": 10000, "deadline_days": 3}(宅配運費 / 宅配免運門檻 / 轉帳訂單繳費期限天數)',
+  },
 ] as const;
 
 export default function SettingsForm(props: {
   companyProfile: string;
   rateCard: string;
   quoteConfig: string;
+  shipping: string;
 }) {
   const initial: Record<string, string> = {
     company_profile: props.companyProfile,
     rate_card: props.rateCard,
     quote_config: props.quoteConfig,
+    shipping: props.shipping,
   };
   const [values, setValues] = useState(initial);
   const [status, setStatus] = useState<Record<string, string>>({});

@@ -6,12 +6,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendQuoteToCustomer, computeTotals } from "@/lib/quote";
 import { getQuoteConfig } from "@/lib/settings";
 import { emailShell, sendMail, siteUrl } from "@/lib/resend";
-import {
-  adjustPoints,
-  applyMembershipPurchase,
-  grantPointsForOrder,
-  refundPointsForOrder,
-} from "@/lib/points";
+import { adjustPoints, refundPointsForOrder } from "@/lib/points";
+import { markOrderPaid } from "@/lib/orders";
 import type { Order, QuoteLineItem } from "@/lib/types";
 
 // 每個 action 都先驗證 admin 身分,再用 service role 寫入
@@ -106,28 +102,30 @@ export async function updateOrderStatus(orderId: string, next: string) {
     throw new Error(`不允許從 ${order.status} 變更為 ${next}`);
   }
 
+  // →paid:委派給 markOrderPaid(與 PChomePay webhook 共用同一套「核發點數 + 會員升級 +
+  // 付款確認信 + 冪等」邏輯,不在這裡重複實作)。
+  if (next === "paid") {
+    const result = await markOrderPaid(orderId);
+    if (!result.ok) throw new Error(result.error);
+    revalidatePath("/admin/orders");
+    revalidatePath(`/admin/orders/${orderId}`);
+    return;
+  }
+
   const patch: Record<string, unknown> = { status: next };
-  if (next === "paid") patch.paid_at = new Date().toISOString();
   if (next === "shipped") patch.shipped_at = new Date().toISOString();
 
   const { error } = await db.from("orders").update(patch).eq("id", orderId);
   if (error) throw new Error(error.message);
 
-  // 點數:→paid 核發消費回饋 + 若含會員方案商品則套用等級;→cancelled 回沖折抵/收回回饋
+  // 點數:→cancelled 回沖折抵/收回回饋
   const updatedOrder = { ...order, ...patch } as Order;
-  if (next === "paid") {
-    await grantPointsForOrder(updatedOrder);
-    await applyMembershipPurchase(updatedOrder);
-  } else if (next === "cancelled") {
+  if (next === "cancelled") {
     await refundPointsForOrder(updatedOrder);
   }
 
   // 通知客戶
   const STATUS_MAIL: Record<string, { subject: string; body: string }> = {
-    paid: {
-      subject: "已收到您的款項",
-      body: "我們已確認收到款項,將盡快為您安排出貨。",
-    },
     shipped: {
       subject: "商品已出貨",
       body: "您的商品已出貨,請留意收件!",

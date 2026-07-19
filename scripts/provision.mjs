@@ -31,6 +31,11 @@ const ENV = {
   RAILWAY_TOKEN: process.env.RAILWAY_TOKEN,
   RESEND_API_KEY: process.env.RESEND_API_KEY ?? "",
   GEMINI_API_KEY: process.env.GEMINI_API_KEY ?? "",
+  PCHOMEPAY_APP_ID: process.env.PCHOMEPAY_APP_ID ?? "",
+  PCHOMEPAY_SECRET: process.env.PCHOMEPAY_SECRET ?? "",
+  PCHOMEPAY_SANDBOX: process.env.PCHOMEPAY_SANDBOX ?? "",
+  PCHOMEPAY_PAY_TYPES: process.env.PCHOMEPAY_PAY_TYPES ?? "",
+  PCHOMEPAY_WEBHOOK_SECRET: process.env.PCHOMEPAY_WEBHOOK_SECRET ?? "",
   ADMIN_EMAIL: process.env.ADMIN_EMAIL ?? "",
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD ?? "",
   SUPABASE_ORG_ID: process.env.SUPABASE_ORG_ID ?? "",
@@ -252,6 +257,11 @@ async function provisionVercel(sb) {
     ["RESEND_FROM", "小時光 Little Moments <no-reply@gathertaiwan.com>"],
     ["CONTACT_NOTIFY_TO", ENV.ADMIN_EMAIL],
     ["GEMINI_API_KEY", ENV.GEMINI_API_KEY],
+    ["PCHOMEPAY_APP_ID", ENV.PCHOMEPAY_APP_ID],
+    ["PCHOMEPAY_SECRET", ENV.PCHOMEPAY_SECRET],
+    ["PCHOMEPAY_SANDBOX", ENV.PCHOMEPAY_SANDBOX],
+    ["PCHOMEPAY_PAY_TYPES", ENV.PCHOMEPAY_PAY_TYPES],
+    ["PCHOMEPAY_WEBHOOK_SECRET", ENV.PCHOMEPAY_WEBHOOK_SECRET],
   ].filter(([, v]) => v);
 
   const upsert = await api(`${VC}/v10/projects/${project.id}/env?upsert=true`, {

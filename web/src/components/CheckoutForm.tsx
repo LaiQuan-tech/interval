@@ -25,13 +25,13 @@ export default function CheckoutForm({
   pointsBalance,
   company,
   shippingConfig,
-  ecpayAvailable,
+  cardPaymentAvailable,
 }: {
   isLoggedIn: boolean;
   pointsBalance: number;
   company: CompanyProfile;
   shippingConfig: ShippingConfig;
-  ecpayAvailable: boolean;
+  cardPaymentAvailable: boolean;
 }) {
   const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
@@ -406,8 +406,14 @@ export default function CheckoutForm({
               {[
                 { value: "bank_transfer" as const, label: "銀行轉帳", desc: "訂單成立後提供匯款帳號" },
                 { value: "cod" as const, label: "貨到付款", desc: "收到商品時付款" },
-                ...(ecpayAvailable
-                  ? [{ value: "card" as const, label: "信用卡", desc: "線上刷卡付款" }]
+                ...(cardPaymentAvailable
+                  ? [
+                      {
+                        value: "card" as const,
+                        label: "信用卡 / ATM / 超商代碼",
+                        desc: "由 PChomePay 支付連提供,送出後將導向收銀台",
+                      },
+                    ]
                   : []),
               ].map((opt) => (
                 <label

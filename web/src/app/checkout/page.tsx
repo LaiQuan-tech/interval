@@ -30,7 +30,7 @@ export default async function CheckoutPage() {
       pointsBalance={pointsBalance}
       company={company}
       shippingConfig={shippingConfig}
-      ecpayAvailable={isCardPaymentAvailable()}
+      cardPaymentAvailable={isCardPaymentAvailable()}
     />
   );
 }

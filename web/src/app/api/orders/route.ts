@@ -325,6 +325,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "訂單建立失敗" }, { status: 500 });
   }
 
+  // card 訂單建單當下就寫入 gateway_tx_id(= order.order_no,DB insert 剛產生,每次結帳
+  // 都是新值,unique index 不衝突),且必須早於下面呼叫 createPayment() —— createPayment()
+  // 一旦成功,PChomePay 就已經知道這個 order_no、隨時可能打 webhook 回來;若寫入動作
+  // 留到 createPayment() 之後才做(舊版做法,且未檢查回傳結果),中間這段空窗期若
+  // webhook 先到,會因為查不到 gateway_tx_id 而被直接 ack 放掉、永遠不會再重送。
+  // 這裡改成先寫、檢查寫入結果;寫入失敗就不呼叫 createPayment()(不讓一筆金流訂單
+  // 存在於 PChomePay 卻對不到我們 DB 的紀錄)。
+  let cardGatewayReady = false;
+  if (paymentMethod === "card") {
+    const { error: gatewayErr } = await supabase
+      .from("orders")
+      .update({ gateway: "pchomepay", gateway_tx_id: order.order_no })
+      .eq("id", order.id);
+    if (gatewayErr) {
+      console.error("[orders] gateway_tx_id write failed:", gatewayErr);
+    } else {
+      cardGatewayReady = true;
+    }
+  }
+
   const { error: itemsErr } = await supabase
     .from("order_items")
     .insert(lineItems.map((i) => ({ ...i, order_id: order.id })));
@@ -353,15 +373,28 @@ export async function POST(req: NextRequest) {
       .gte("stock", line.quantity);
   }
 
-  // ECPay 介面預留:bank_transfer/cod 一律回 null,走現行流程;card 目前金鑰未設定同樣回 null
-  const paymentResult = await createPayment(paymentMethod, {
-    id: order.id,
-    order_no: order.order_no,
-    total: order.total,
-    contact_name: order.contact_name,
-    contact_email: order.contact_email,
-    public_token: order.public_token,
-  });
+  // bank_transfer/cod 一律回 null,走現行「站內顯示匯款資訊」流程;
+  // card 呼叫 PChomePay 建立付款,取得 redirectUrl 供前端轉導至收銀台 —— 但只在上面
+  // gateway_tx_id 已確實寫入(cardGatewayReady)時才呼叫,避免建立一筆 webhook 永遠對
+  // 不到單的金流 session。
+  let paymentResult: { redirectUrl: string } | null = null;
+  if (paymentMethod !== "card" || cardGatewayReady) {
+    try {
+      paymentResult = await createPayment(paymentMethod, {
+        id: order.id,
+        order_no: order.order_no,
+        total: order.total,
+        contact_name: order.contact_name,
+        contact_email: order.contact_email,
+        public_token: order.public_token,
+        itemName: lineItems[0]?.name,
+      });
+    } catch (err) {
+      // 訂單已建立,金流建立失敗不讓整個下單流程 500 —— 客戶仍拿得到 orderToken,
+      // 訂單維持 pending,可從訂單頁或客服協助重新導向付款。
+      console.error("[orders] createPayment failed:", err);
+    }
+  }
 
   // 通知信
   const itemRows = lineItems

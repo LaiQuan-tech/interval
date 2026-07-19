@@ -308,9 +308,13 @@ async function provisionRailway(sb, vercel) {
   if (project) {
     ok(`Railway 專案已存在:${project.id}`);
   } else {
+    // Railway API 現在要求 workspaceId,取 token 所屬的第一個 workspace
+    const ws = await railwayGql(`query { me { workspaces { id name } } }`);
+    const workspaceId = ws.me.workspaces?.[0]?.id;
+    if (!workspaceId) throw new Error("Railway:找不到 workspace,請確認 token 權限");
     const created = await railwayGql(
       `mutation($input: ProjectCreateInput!) { projectCreate(input: $input) { id name } }`,
-      { input: { name: ENV.PROJECT_NAME } }
+      { input: { name: ENV.PROJECT_NAME, workspaceId } }
     );
     project = created.projectCreate;
     ok(`Railway 專案建立:${project.id}`);
@@ -382,12 +386,12 @@ async function provisionRailway(sb, vercel) {
   let apiUrl = "";
   try {
     const domains = await railwayGql(
-      `query($environmentId: String!, $serviceId: String!) {
-         domains(environmentId: $environmentId, serviceId: $serviceId) {
+      `query($projectId: String!, $environmentId: String!, $serviceId: String!) {
+         domains(projectId: $projectId, environmentId: $environmentId, serviceId: $serviceId) {
            serviceDomains { domain }
          }
        }`,
-      { environmentId: environment.id, serviceId: service.id }
+      { projectId: project.id, environmentId: environment.id, serviceId: service.id }
     );
     const existing = domains.domains?.serviceDomains?.[0]?.domain;
     if (existing) {

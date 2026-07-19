@@ -234,7 +234,12 @@ async function provisionVercel(sb) {
     }
   }
 
-  const prodUrl = `https://${ENV.PROJECT_NAME}.vercel.app`;
+  // 專案名可能已被其他帳號佔用,Vercel 會另配網域(如 interval-livid.vercel.app)——
+  // 一律以 API 回傳的實際網域為準,不可用專案名推測
+  let prodUrl = `https://${ENV.PROJECT_NAME}.vercel.app`;
+  const domainsRes = await api(`${VC}/v9/projects/${project.id}/domains`, { headers: vcHeaders() });
+  const assigned = (domainsRes.json?.domains ?? []).find((d) => d.verified);
+  if (assigned) prodUrl = `https://${assigned.name}`;
 
   // 環境變數(upsert)
   log("Vercel:設定環境變數…");
@@ -302,8 +307,14 @@ async function railwayGql(query, variables = {}) {
 async function provisionRailway(sb, vercel) {
   log("Railway:檢查專案…");
 
-  const me = await railwayGql(`query { me { id name projects { edges { node { id name } } } } }`);
-  let project = me.me.projects.edges.map((e) => e.node).find((p) => p.name === ENV.PROJECT_NAME);
+  // me.projects 已廢棄(回傳恆為空,會導致每次重跑都新建專案)——必須從 workspaces 查
+  const me = await railwayGql(
+    `query { me { workspaces { id projects { edges { node { id name } } } } } }`
+  );
+  const allProjects = (me.me.workspaces ?? []).flatMap((w) =>
+    w.projects.edges.map((e) => e.node)
+  );
+  let project = allProjects.find((p) => p.name === ENV.PROJECT_NAME);
 
   if (project) {
     ok(`Railway 專案已存在:${project.id}`);
@@ -462,6 +473,16 @@ async function main() {
 
     const vc = await provisionVercel(sb);
     output.vercel = { projectId: vc.projectId, url: vc.prodUrl };
+
+    // Supabase auth site_url 在 Vercel 之前只能用推測值,拿到實際網域後回頭修正
+    if (vc.prodUrl !== sb.siteUrl) {
+      await api(`${SB}/v1/projects/${sb.ref}/config/auth`, {
+        method: "PATCH",
+        headers: sbHeaders(),
+        body: { site_url: vc.prodUrl },
+      });
+      ok(`Supabase Auth site_url 已修正為實際網域:${vc.prodUrl}`);
+    }
 
     const rw = await provisionRailway(sb, vc);
     output.railway = { projectId: rw.projectId, apiUrl: rw.apiUrl };

@@ -3,9 +3,8 @@
 import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import { emailShell, notifyAdmin } from "@/lib/resend";
 
-// 預約參訪表單四個目的 chip(依設計稿 purposeList)
-export const BOOKING_PURPOSES = ["鑑賞畫作", "租賃 · 買斷", "規劃旅程", "入會諮詢"] as const;
-
+// 注意:"use server" 檔案只能 export async function——
+// 參訪目的 chip 清單維護在 components/BookingForm.tsx(非 async export 放這裡會使 action 在部署環境 500)
 export type CreateBookingInput = {
   name: string;
   email: string;

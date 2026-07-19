@@ -154,6 +154,34 @@ function toGeminiSchema(node: SchemaNode): Record<string, unknown> {
   return out;
 }
 
+// Gemma 在 JSON 模式偶爾會於合法 JSON 之後多吐文字(實測 2026-07),
+// 直接 JSON.parse 會炸——掃出第一個括號平衡的完整 JSON 值再解析
+function extractFirstJson(text: string): string | null {
+  const start = text.search(/[{[]/);
+  if (start < 0) return null;
+  const open = text[start];
+  const close = open === "{" ? "}" : "]";
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (ch === "\\") esc = true;
+      else if (ch === '"') inStr = false;
+    } else {
+      if (ch === '"') inStr = true;
+      else if (ch === open) depth++;
+      else if (ch === close) {
+        depth--;
+        if (depth === 0) return text.slice(start, i + 1);
+      }
+    }
+  }
+  return null;
+}
+
 async function callJSON<T>(system: string, user: string, schema: SchemaNode): Promise<T | null> {
   try {
     const res = await fetch(`${GEMINI_BASE}/${GEMINI_MODEL}:generateContent`, {
@@ -179,7 +207,13 @@ async function callJSON<T>(system: string, user: string, schema: SchemaNode): Pr
       .filter((p: { thought?: boolean }) => !p.thought)
       .map((p: { text?: string }) => p.text ?? "")
       .join("");
-    return JSON.parse(text) as T;
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      const first = extractFirstJson(text);
+      if (first) return JSON.parse(first) as T;
+      throw new Error(`no parseable JSON in response: ${text.slice(0, 120)}`);
+    }
   } catch (err) {
     console.error("[ai] JSON call failed:", err);
     return null;

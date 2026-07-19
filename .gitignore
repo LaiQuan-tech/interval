@@ -1,0 +1,23 @@
+# deps
+node_modules/
+
+# builds
+.next/
+out/
+dist/
+.turbo/
+
+# env — 秘密一律不進 repo(repo 是公開的)
+.env
+.env.*
+!.env.example
+.provision-output.json
+
+# misc
+.DS_Store
+*.log
+.vercel
+.railway
+coverage/
+
+*.tsbuildinfo

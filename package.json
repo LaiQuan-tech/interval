@@ -1,0 +1,21 @@
+{
+  "name": "interval",
+  "private": true,
+  "description": "interval — 賣到全世界:跨境電商官網 + 會員系統 + 電商後台 + AI 自動報價",
+  "scripts": {
+    "dev": "npm run dev --workspace=web",
+    "dev:api": "npm run dev --workspace=api",
+    "build": "npm run build --workspace=web",
+    "build:api": "npm run build --workspace=api",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "provision": "node scripts/provision.mjs"
+  },
+  "workspaces": [
+    "web",
+    "api"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
+}

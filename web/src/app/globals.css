@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #101828;
+  --color-ink-soft: #475467;
+  --color-paper: #fafaf7;
+  --color-card: #ffffff;
+  --color-line: #e7e5df;
+  --color-accent: #2742f5;
+  --color-accent-dark: #1e34c2;
+  --color-accent-soft: #eef0fe;
+  --color-ok: #067647;
+  --color-ok-soft: #ecfdf3;
+  --color-warn: #b54708;
+  --color-warn-soft: #fffaeb;
+  --color-danger: #d92d20;
+  --color-danger-soft: #fef3f2;
+
+  --font-sans: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei",
+    ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+@layer components {
+  .iv-container {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+  }
+
+  /* 按鈕:共用外觀直接寫 CSS,避免 @apply 自訂 class(Tailwind v4 不支援) */
+  .iv-btn-primary,
+  .iv-btn-ghost,
+  .iv-btn-danger {
+    display: inline-flex;
+    min-height: calc(var(--spacing) * 11);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    gap: calc(var(--spacing) * 2);
+    border-radius: 9999px;
+    padding: calc(var(--spacing) * 2.5) calc(var(--spacing) * 6);
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .iv-btn-primary:disabled,
+  .iv-btn-ghost:disabled,
+  .iv-btn-danger:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+  .iv-btn-primary {
+    background: var(--color-accent);
+    color: #fff;
+  }
+  .iv-btn-primary:hover:not(:disabled) {
+    background: var(--color-accent-dark);
+  }
+  .iv-btn-ghost {
+    border: 1px solid var(--color-line);
+    background: var(--color-card);
+    color: var(--color-ink);
+  }
+  .iv-btn-ghost:hover:not(:disabled) {
+    border-color: var(--color-ink-soft);
+  }
+  .iv-btn-danger {
+    border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
+    background: var(--color-card);
+    color: var(--color-danger);
+  }
+  .iv-btn-danger:hover:not(:disabled) {
+    background: var(--color-danger-soft);
+  }
+
+  .iv-card {
+    @apply rounded-2xl border border-line bg-card p-5 sm:p-6;
+  }
+  .iv-input {
+    @apply min-h-11 w-full rounded-xl border border-line bg-card px-4 py-2.5 text-base outline-none focus:border-accent;
+  }
+  .iv-label {
+    @apply mb-1.5 block text-sm font-medium text-ink-soft;
+  }
+  .iv-chip {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .iv-table-wrap {
+    @apply -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0;
+  }
+}

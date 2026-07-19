@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm install
+
+      - name: Lint (web)
+        run: npm run lint --workspace=web
+
+      - name: Typecheck (web + api)
+        run: npm run typecheck --workspaces --if-present
+
+      - name: Build web
+        run: npm run build --workspace=web
+        env:
+          # build 只需要佔位值;實際值由 Vercel 專案環境變數提供
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+
+      - name: Build api
+        run: npm run build --workspace=api

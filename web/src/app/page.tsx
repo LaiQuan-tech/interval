@@ -71,6 +71,7 @@ export default async function HomePage() {
             alt={artworks[1]?.name}
             label="detail 01"
             sizes="(max-width: 1024px) 100vw, 40vw"
+            priority
             className="min-h-54 flex-1"
           />
           <Placeholder
@@ -78,6 +79,7 @@ export default async function HomePage() {
             alt={artworks[2]?.name}
             label="detail 02"
             sizes="(max-width: 1024px) 100vw, 40vw"
+            priority
             className="min-h-54 flex-1"
           />
         </div>

@@ -386,7 +386,10 @@ export default function AdminBottomNav({
         </div>
       )}
 
-      <nav className="fixed inset-x-0 bottom-0 z-50 flex border-t border-line bg-paper lg:hidden">
+      <nav
+        aria-label="底部導覽"
+        className="fixed inset-x-0 bottom-0 z-50 flex border-t border-line bg-paper lg:hidden"
+      >
         {primary.map((item) => {
           const active = isAdminNavActive(pathname, item.href);
           const count = item.badge ? badges[item.badge] : 0;
@@ -395,6 +398,7 @@ export default function AdminBottomNav({
               key={item.href}
               href={item.href}
               aria-current={active ? "page" : undefined}
+              aria-label={count > 0 ? `${item.label}，${count} 筆待處理` : undefined}
               className={`relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] ${
                 active ? "text-accent" : "text-muted-2"
               }`}

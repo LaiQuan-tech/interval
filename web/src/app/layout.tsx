@@ -1,10 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import ChatWidget from "@/components/ChatWidget";
-import CartFlyout from "@/components/CartFlyout";
-import { getShippingConfig } from "@/lib/settings";
 
 export const metadata: Metadata = {
   title: {
@@ -27,11 +22,9 @@ export const viewport: Viewport = {
 const FONTS_URL =
   "https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Noto+Sans+TC:wght@300;400;500&display=swap";
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const shippingConfig = await getShippingConfig();
-
   return (
     <html lang="zh-Hant-TW">
       <head>
@@ -39,18 +32,7 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href={FONTS_URL} rel="stylesheet" />
       </head>
-      <body className="flex min-h-dvh flex-col antialiased">
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
-        <ChatWidget />
-        <CartFlyout
-          shippingConfig={{
-            fee_home: shippingConfig.fee_home,
-            free_threshold_home: shippingConfig.free_threshold_home,
-          }}
-        />
-      </body>
+      <body className="flex min-h-dvh flex-col antialiased">{children}</body>
     </html>
   );
 }

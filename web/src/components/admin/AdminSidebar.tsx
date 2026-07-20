@@ -15,13 +15,14 @@ export default function AdminSidebar({
   const pathname = usePathname();
 
   return (
+    // 高度由 Task 5 的後台 layout(flex flex-1 橫向容器)撐滿;nav 的 overflow-y-auto 依賴此契約
     <aside className="hidden w-55 shrink-0 flex-col border-r border-line bg-panel lg:flex">
       <div className="border-b border-line px-5 py-4">
         <div className="font-serif text-[17px] text-ink">小時光</div>
         <div className="lm-caption text-[11px]">後台管理</div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto p-3">
+      <nav aria-label="主要導覽" className="flex-1 overflow-y-auto p-3">
         {ADMIN_NAV.map((item) => {
           const active = isAdminNavActive(pathname, item.href);
           const count = item.badge ? badges[item.badge] : 0;
@@ -30,6 +31,7 @@ export default function AdminSidebar({
               key={item.href}
               href={item.href}
               aria-current={active ? "page" : undefined}
+              aria-label={count > 0 ? `${item.label}，${count} 筆待處理` : undefined}
               className={`mb-0.5 flex items-center gap-3 px-3 py-2.5 text-sm transition-colors ${
                 active
                   ? "bg-accent-soft font-medium text-accent"

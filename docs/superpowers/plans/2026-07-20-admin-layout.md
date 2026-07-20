@@ -604,6 +604,16 @@ iv-container 未定義導致內容無最大寬度與留白、寬表格被裁切,
 
 ---
 
+## 卡片共用規則（Task 6–8 一體適用，實作前必讀）
+
+以下兩條是 Task 6 實作後由程式品質審查抓出來的缺陷，**下方所有卡片範本都已據此修正**；若你在範本裡看到違反這兩條的寫法，以本節為準。
+
+1. **`iv-chip` 一定要配色。** `.iv-chip`（`globals.css:226-233`）只定義排版（padding、圓角、字級），**沒有 background / color / border**。裸寫 `iv-chip` 會渲染成沒有底色的文字，看起來像樣式壞掉。全 repo 既有 15 處用法都搭配了配色 class。**規則：手機卡片的 chip 一律沿用該頁桌機表格同一欄位的 class 表達式**——若桌機是條件式配色（如 `quotes`、`products` 依狀態給不同顏色），就沿用**同一份**條件邏輯，不要自己另寫一套；若桌機是固定配色（如 `orders` 的 `bg-accent-soft text-accent`），就照抄。
+
+2. **次要資訊行一定要 `break-words`。** 卡片沒有 `overflow` 保護（`.iv-card` 未設），而姓名、email 等欄位可能是近百字的無空白字串（客戶把 email 或亂碼貼進姓名欄）。少了 `break-words` 會撐開卡片、造成**整頁水平溢出**——而「內容被裁切、要橫向滑」正是這整個改造要解決的原始問題，不可在新版重新引入。桌機表格因為包在有 `overflow-x:auto` 的 `iv-table-wrap` 裡不受影響，手機卡片沒有這層保護，必須自己加。
+
+---
+
 ## Task 6: 訂單清單手機卡片
 
 **Files:**
@@ -624,9 +634,11 @@ iv-container 未定義導致內容無最大寬度與留白、寬表格被裁切,
         <Link href={`/admin/orders/${o.id}`} className="font-medium text-ink hover:text-accent">
           {o.order_no}
         </Link>
-        <span className="iv-chip shrink-0">{ORDER_STATUS_LABEL[o.status]}</span>
+        <span className="iv-chip shrink-0 bg-accent-soft text-accent">
+          {ORDER_STATUS_LABEL[o.status] ?? o.status}
+        </span>
       </div>
-      <div className="mt-1.5 text-[13px] text-ink-soft">
+      <div className="mt-1.5 text-[13px] text-ink-soft break-words">
         {o.contact_name} · {formatTWD(o.total)} · {formatDate(o.created_at)}
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
@@ -691,9 +703,10 @@ git commit -m "feat(admin): 訂單清單在手機改為卡片式"
             <span className="iv-chip ml-2 bg-warn-soft text-warn">AI</span>
           )}
         </Link>
-        <span className="iv-chip shrink-0">{q.status}</span>
+        {/* 配色必須沿用桌機表格 :53-63 的同一份條件式,不要另寫一套(見「卡片共用規則」1) */}
+        <span className="iv-chip shrink-0 ...沿用桌機條件式配色...">{q.status}</span>
       </div>
-      <div className="mt-1.5 text-[13px] text-ink-soft">
+      <div className="mt-1.5 text-[13px] text-ink-soft break-words">
         {q.contact_email} · {formatTWD(q.total)} · {formatDate(q.created_at)}
       </div>
       <div className="mt-3">
@@ -751,9 +764,10 @@ git commit -m "feat(admin): 報價清單在手機改為卡片式"
         <Link href={`/admin/products/${p.id}`} className="font-medium text-ink hover:text-accent">
           {p.name}
         </Link>
-        <span className="iv-chip shrink-0">{p.status}</span>
+        {/* 配色沿用桌機表格 :59 的同一份條件式(見「卡片共用規則」1) */}
+        <span className="iv-chip shrink-0 ...沿用桌機條件式配色...">{p.status}</span>
       </div>
-      <div className="mt-1.5 text-[13px] text-ink-soft">
+      <div className="mt-1.5 text-[13px] text-ink-soft break-words">
         {p.product_type} · {formatTWD(p.price)} · 庫存 {p.stock}
       </div>
       <div className="mt-3">
@@ -775,10 +789,13 @@ git commit -m "feat(admin): 報價清單在手機改為卡片式"
   {members.map((m) => (
     <div key={m.id} className="iv-card !p-3.5">
       <div className="flex items-start justify-between gap-2">
-        <span className="font-medium text-ink">{m.name || m.email}</span>
-        {m.tier_slug && <span className="iv-chip shrink-0">{m.tier_slug}</span>}
+        <span className="font-medium text-ink break-words">{m.name || m.email}</span>
+        {/* 等級 chip 沿用桌機表格 :60 的 `iv-chip bg-accent-soft text-accent` */}
+        {m.tier_slug && (
+          <span className="iv-chip shrink-0 bg-accent-soft text-accent">{m.tier_slug}</span>
+        )}
       </div>
-      <div className="mt-1.5 text-[13px] text-ink-soft">{m.email}</div>
+      <div className="mt-1.5 text-[13px] text-ink-soft break-words">{m.email}</div>
     </div>
   ))}
 </div>
@@ -795,13 +812,14 @@ git commit -m "feat(admin): 報價清單在手機改為卡片式"
   {bookings.map((b) => (
     <div key={b.id} className="iv-card !p-3.5">
       <div className="flex items-start justify-between gap-2">
-        <span className="font-medium text-ink">{b.name}</span>
-        <span className="iv-chip shrink-0">{b.status}</span>
+        <span className="font-medium text-ink break-words">{b.name}</span>
+        {/* 狀態 chip 沿用桌機表格 :68 的 `iv-chip bg-accent-soft text-accent` */}
+        <span className="iv-chip shrink-0 bg-accent-soft text-accent">{b.status}</span>
       </div>
-      <div className="mt-1.5 text-[13px] text-ink-soft">
+      <div className="mt-1.5 text-[13px] text-ink-soft break-words">
         {b.visit_date ?? "未指定日期"} · {b.purpose ?? "—"}
       </div>
-      <div className="mt-1 text-[13px] text-ink-soft">{b.phone ?? b.email}</div>
+      <div className="mt-1 text-[13px] text-ink-soft break-words">{b.phone ?? b.email}</div>
       <div className="mt-3 flex flex-wrap gap-2">
         <BookingStatusButtons bookingId={b.id} status={b.status} />
       </div>
@@ -811,6 +829,8 @@ git commit -m "feat(admin): 報價清單在手機改為卡片式"
 ```
 
 **動手前先讀三個檔**，核對迴圈變數名、狀態 chip 的條件式樣式、空狀態文案、以及 `AdjustPointsForm` / `BookingStatusButtons` 的實際 props 簽名，照既有寫法傳值。
+
+⚠️ 上面三段範本**都省略了空狀態**（Task 6、7 的範本有，這裡沒有，是範本疏漏不是刻意）。三個卡片清單都要比照 Task 6 補上 `{xxx.length === 0 && (...)}`，文案**沿用該頁桌機表格既有的空狀態文案**，不要自創。
 
 - [ ] **Step 4: 驗證建置**
 

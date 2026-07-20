@@ -46,9 +46,9 @@ export default async function AdminOrdersPage({
               <Link href={`/admin/orders/${o.id}`} className="font-medium text-ink hover:text-accent">
                 {o.order_no}
               </Link>
-              <span className="iv-chip shrink-0">{ORDER_STATUS_LABEL[o.status] ?? o.status}</span>
+              <span className="iv-chip shrink-0 bg-accent-soft text-accent">{ORDER_STATUS_LABEL[o.status] ?? o.status}</span>
             </div>
-            <div className="mt-1.5 text-[13px] text-ink-soft">
+            <div className="mt-1.5 text-[13px] text-ink-soft break-words">
               {o.contact_name} · {formatTWD(o.total)} · {formatDate(o.created_at)}
             </div>
             <div className="mt-3 flex flex-wrap gap-2">

@@ -21,7 +21,46 @@ export default async function AdminQuotesPage() {
         AI 產生的報價會先變成「草稿」,審核內容後按「核准並寄出」才會通知客戶。
       </p>
 
-      <div className="iv-table-wrap">
+      <div className="flex flex-col gap-2.5 lg:hidden">
+        {quotes.map((q) => (
+          <div key={q.id} className="iv-card !p-3.5">
+            <div className="flex items-start justify-between gap-2">
+              <Link href={`/admin/quotes/${q.id}`} className="font-medium text-ink hover:text-accent">
+                {q.quote_no}
+                {q.created_by === "ai" && (
+                  <span className="iv-chip ml-2 bg-warn-soft text-warn">AI</span>
+                )}
+              </Link>
+              <span
+                className={`iv-chip shrink-0 ${
+                  q.status === "draft"
+                    ? "bg-warn-soft text-warn"
+                    : q.status === "converted" || q.status === "accepted"
+                      ? "bg-ok-soft text-ok"
+                      : "bg-accent-soft text-accent"
+                }`}
+              >
+                {QUOTE_STATUS_LABEL[q.status] ?? q.status}
+              </span>
+            </div>
+            <div className="mt-1.5 text-[13px] text-ink-soft break-words">
+              {q.contact_email} · {formatTWD(q.total)} · {formatDate(q.created_at)}
+            </div>
+            <div className="mt-3">
+              <Link href={`/admin/quotes/${q.id}`} className="iv-btn-ghost">
+                審核
+              </Link>
+            </div>
+          </div>
+        ))}
+        {quotes.length === 0 && (
+          <div className="iv-card text-center text-ink-soft">
+            還沒有報價單。客戶跟 AI 客服詢價後會自動出現在這裡。
+          </div>
+        )}
+      </div>
+
+      <div className="iv-table-wrap hidden lg:block">
         <table className="w-full min-w-140 border-collapse text-sm">
           <thead>
             <tr className="border-b border-line text-left text-ink-soft">

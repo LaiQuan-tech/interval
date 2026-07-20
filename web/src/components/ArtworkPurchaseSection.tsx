@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { formatTWD } from "@/lib/format";
 import AddToCartButton from "@/components/AddToCartButton";
+import RoomMockupFlyout from "@/components/RoomMockupFlyout";
 import type { Product } from "@/lib/types";
 
 // 作品詳情頁的購買模式切換(月租 / 買斷):價格連動,加入購物車時帶對應 mode 與單價
 export default function ArtworkPurchaseSection({ product }: { product: Product }) {
   const hasRental = product.price_rental_monthly != null;
   const [mode, setMode] = useState<"buyout" | "rental">("buyout");
+  const [mockupOpen, setMockupOpen] = useState(false);
   const unitPrice =
     mode === "rental" && product.price_rental_monthly != null
       ? product.price_rental_monthly
@@ -50,6 +52,21 @@ export default function ArtworkPurchaseSection({ product }: { product: Product }
         unitPrice={unitPrice}
         disabled={product.stock <= 0}
         disabledLabel="補貨中"
+      />
+
+      <button
+        type="button"
+        onClick={() => setMockupOpen(true)}
+        className="iv-btn-ghost w-full mt-3"
+      >
+        先看看掛在我家的樣子 →
+      </button>
+      <p className="lm-caption mt-2 text-[11px]">上傳照片或用示範空間,30 秒生成</p>
+
+      <RoomMockupFlyout
+        open={mockupOpen}
+        onClose={() => setMockupOpen(false)}
+        product={product}
       />
     </div>
   );

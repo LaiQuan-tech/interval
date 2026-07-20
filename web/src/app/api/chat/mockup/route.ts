@@ -20,6 +20,8 @@ import type { ChatMessage } from "@/lib/types";
 export const maxDuration = 60;
 // 函式釘在東京(hnd1),與 Supabase(ap-northeast-1)同地。預設跑在美東(iad1),
 // 快取命中要做的每次 DB/storage 往返都橫渡太平洋,實測讓 <1s 的命中變 2.6~4.3s。
+// 注意:此 export 在 Hobby 方案不生效,實際生效的是 Vercel 專案設定
+// serverlessFunctionRegion=hnd1(2026-07-21 已改);保留此行作為意圖文件。
 export const preferredRegion = "hnd1";
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);

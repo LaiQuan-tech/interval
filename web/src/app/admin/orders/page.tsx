@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatDate, formatTWD, ORDER_STATUS_LABEL } from "@/lib/format";
 import type { Order } from "@/lib/types";
+import OrderStatusButtons from "@/components/admin/OrderStatusButtons";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,29 @@ export default async function AdminOrdersPage({
         ))}
       </div>
 
-      <div className="iv-table-wrap">
+      <div className="flex flex-col gap-2.5 lg:hidden">
+        {orders.map((o) => (
+          <div key={o.id} className="iv-card !p-3.5">
+            <div className="flex items-start justify-between gap-2">
+              <Link href={`/admin/orders/${o.id}`} className="font-medium text-ink hover:text-accent">
+                {o.order_no}
+              </Link>
+              <span className="iv-chip shrink-0">{ORDER_STATUS_LABEL[o.status] ?? o.status}</span>
+            </div>
+            <div className="mt-1.5 text-[13px] text-ink-soft">
+              {o.contact_name} · {formatTWD(o.total)} · {formatDate(o.created_at)}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <OrderStatusButtons orderId={o.id} status={o.status} />
+            </div>
+          </div>
+        ))}
+        {orders.length === 0 && (
+          <div className="iv-card text-center text-ink-soft">沒有符合條件的訂單</div>
+        )}
+      </div>
+
+      <div className="iv-table-wrap hidden lg:block">
         <table className="w-full min-w-140 border-collapse text-sm">
           <thead>
             <tr className="border-b border-line text-left text-ink-soft">

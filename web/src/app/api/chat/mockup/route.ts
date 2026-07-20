@@ -18,6 +18,9 @@ import { signChatImage } from "@/lib/chat-images";
 import type { ChatMessage } from "@/lib/types";
 
 export const maxDuration = 60;
+// 函式釘在東京(hnd1),與 Supabase(ap-northeast-1)同地。預設跑在美東(iad1),
+// 快取命中要做的每次 DB/storage 往返都橫渡太平洋,實測讓 <1s 的命中變 2.6~4.3s。
+export const preferredRegion = "hnd1";
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_BYTES = 8 * 1024 * 1024; // 8MB(client 已先縮圖到最長邊 1536)

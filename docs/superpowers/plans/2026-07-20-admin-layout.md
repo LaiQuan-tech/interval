@@ -610,7 +610,9 @@ iv-container 未定義導致內容無最大寬度與留白、寬表格被裁切,
 
 1. **`iv-chip` 一定要配色。** `.iv-chip`（`globals.css:226-233`）只定義排版（padding、圓角、字級），**沒有 background / color / border**。裸寫 `iv-chip` 會渲染成沒有底色的文字，看起來像樣式壞掉。全 repo 既有 15 處用法都搭配了配色 class。**規則：手機卡片的 chip 一律沿用該頁桌機表格同一欄位的 class 表達式**——若桌機是條件式配色（如 `quotes`、`products` 依狀態給不同顏色），就沿用**同一份**條件邏輯，不要自己另寫一套；若桌機是固定配色（如 `orders` 的 `bg-accent-soft text-accent`），就照抄。
 
-2. **次要資訊行一定要 `break-words`。** 卡片沒有 `overflow` 保護（`.iv-card` 未設），而姓名、email 等欄位可能是近百字的無空白字串（客戶把 email 或亂碼貼進姓名欄）。少了 `break-words` 會撐開卡片、造成**整頁水平溢出**——而「內容被裁切、要橫向滑」正是這整個改造要解決的原始問題，不可在新版重新引入。桌機表格因為包在有 `overflow-x:auto` 的 `iv-table-wrap` 裡不受影響，手機卡片沒有這層保護，必須自己加。
+2. **徽章不要包進 `<Link>` 裡。** 徽章（AI 標記、狀態 chip 等）若寫在 `<Link>` 內部，會被併入連結的可及名稱，螢幕閱讀器會讀成「Q-2026-0003 AI」；而各頁桌機表格都是把徽章放在連結**外面**當手足元素。**規則：徽章一律放 `</Link>` 外，與桌機一致**；需要並排時用一個 `<div className="min-w-0">` 包住「連結＋徽章」，`min-w-0` 讓長內容在 flex 容器裡能正確收縮。
+
+3. **次要資訊行一定要 `break-words`。** 卡片沒有 `overflow` 保護（`.iv-card` 未設），而姓名、email 等欄位可能是近百字的無空白字串（客戶把 email 或亂碼貼進姓名欄）。少了 `break-words` 會撐開卡片、造成**整頁水平溢出**——而「內容被裁切、要橫向滑」正是這整個改造要解決的原始問題，不可在新版重新引入。桌機表格因為包在有 `overflow-x:auto` 的 `iv-table-wrap` 裡不受影響，手機卡片沒有這層保護，必須自己加。
 
 ---
 
@@ -697,12 +699,17 @@ git commit -m "feat(admin): 訂單清單在手機改為卡片式"
   {quotes.map((q) => (
     <div key={q.id} className="iv-card !p-3.5">
       <div className="flex items-start justify-between gap-2">
-        <Link href={`/admin/quotes/${q.id}`} className="font-medium text-ink hover:text-accent">
-          {q.quote_no}
+        {/* AI 徽章必須在 </Link> 外(比照桌機表格 :78-83)。包在 Link 內會讓螢幕閱讀器
+            把連結可及名稱讀成「Q-2026-0003 AI」,與桌機同一筆資料的語意不一致。
+            min-w-0 讓長內容在 flex 容器裡能正確收縮。 */}
+        <div className="min-w-0">
+          <Link href={`/admin/quotes/${q.id}`} className="font-medium text-ink hover:text-accent">
+            {q.quote_no}
+          </Link>
           {q.created_by === "ai" && (
             <span className="iv-chip ml-2 bg-warn-soft text-warn">AI</span>
           )}
-        </Link>
+        </div>
         {/* 配色必須沿用桌機表格 :53-63 的同一份條件式,不要另寫一套(見「卡片共用規則」1) */}
         <span className="iv-chip shrink-0 ...沿用桌機條件式配色...">{q.status}</span>
       </div>

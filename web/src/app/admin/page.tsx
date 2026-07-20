@@ -48,6 +48,8 @@ export default async function AdminDashboard() {
 
   return (
     <div className="space-y-8">
+      <h2 className="mb-4 font-bold">儀表板</h2>
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map((s) => (
           <Link key={s.label} href={s.href ?? "/admin"} className="iv-card !p-4">

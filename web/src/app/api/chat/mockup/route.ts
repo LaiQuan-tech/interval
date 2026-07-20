@@ -21,6 +21,10 @@ export const maxDuration = 60;
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_BYTES = 8 * 1024 * 1024; // 8MB(client 已先縮圖到最長邊 1536)
 const MAX_MOCKUPS_PER_SESSION = 6;
+// 每 IP 每日模擬圖專屬額度:與 ai_rate_check 的文字聊天額度(每 IP 每日 60 次)分離。
+// 一次模擬圖要呼叫 Gemini 影像模型,成本是文字聊天的數十倍;入口變顯眼(商品頁按鈕)後
+// 必須另外把關,見下方 POST 內「每 IP 每日模擬圖上限」區塊。
+const MAX_MOCKUPS_PER_IP_PER_DAY = 15;
 const EXTERNAL_FETCH_TIMEOUT_MS = 10_000;
 
 function friendly(error: string, status = 400) {
@@ -273,6 +277,37 @@ export async function POST(req: NextRequest) {
       "這次對話已經幫您生成過幾張擺放模擬圖了,想看更多歡迎直接留下聯絡方式,我們安排專人為您服務!",
       429
     );
+  }
+
+  // 每 IP 每日模擬圖上限(獨立於前面 ai_rate_check 的文字聊天額度,不動那個 DB function 的
+  // 簽名以免影響文字聊天)。計數來源是 ai_chat_logs:抓當日(row 的 created_at 落在今天 UTC)
+  // 這個 IP 名下所有 session 的訊息,套用跟上面 mockupCount 一樣的判定邏輯
+  // (role 為 assistant 且帶 imageUrl 或 imagePath——示範空間存 imageUrl、上傳自家照存
+  // imagePath,兩種都要算,否則客戶能用示範空間無限刷)加總。
+  const startOfTodayUtc = new Date();
+  startOfTodayUtc.setUTCHours(0, 0, 0, 0);
+  const { data: todayLogs, error: todayLogsError } = await supabase
+    .from("ai_chat_logs")
+    .select("messages")
+    .eq("ip", ip)
+    .gte("created_at", startOfTodayUtc.toISOString());
+  if (todayLogsError) {
+    console.error("[chat/mockup] daily mockup quota check failed:", todayLogsError);
+  } else {
+    const todayMockupCount = (todayLogs ?? []).reduce((sum, row) => {
+      const rowMessages = (row.messages ?? []) as ChatMessage[];
+      return (
+        sum +
+        rowMessages.filter((m) => m.role === "assistant" && Boolean(m.imageUrl || m.imagePath))
+          .length
+      );
+    }, 0);
+    if (todayMockupCount >= MAX_MOCKUPS_PER_IP_PER_DAY) {
+      return friendly(
+        "今天的居家擺放模擬額度已經用完囉,明天再來試試,或直接到商品頁逛逛先收藏喜歡的作品!",
+        429
+      );
+    }
   }
 
   // 生成 + 浮水印

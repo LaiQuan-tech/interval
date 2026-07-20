@@ -359,9 +359,11 @@ export type RoomPhoto = { mime: string; base64: string };
 
 // 把作品合成進客戶自己的空間照片:輸入客廳照 + 作品圖 + 合成指令,輸出一張 photorealistic 合成圖(Buffer)。
 // 呼叫形狀(image 輸入 + IMAGE 輸出)已實測可用;失敗一律丟明確錯誤,由呼叫端決定如何回應客戶。
+export type ArtworkImage = { mime: string; base64: string };
+
 export async function generateRoomMockup(input: {
   roomPhoto: RoomPhoto;
-  artworkJpg: Buffer;
+  artwork: ArtworkImage;
   artworkName: string;
 }): Promise<Buffer> {
   const instruction = `這是兩張圖片:第一張是客戶家中的空間照片,第二張是畫作《${input.artworkName}》。
@@ -378,7 +380,7 @@ export async function generateRoomMockup(input: {
           role: "user",
           parts: [
             { inlineData: { mimeType: input.roomPhoto.mime, data: input.roomPhoto.base64 } },
-            { inlineData: { mimeType: "image/jpeg", data: input.artworkJpg.toString("base64") } },
+            { inlineData: { mimeType: input.artwork.mime, data: input.artwork.base64 } },
             { text: instruction },
           ],
         },

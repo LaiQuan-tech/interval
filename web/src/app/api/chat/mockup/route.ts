@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
+import dns from "dns";
+import net from "net";
 import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { generateMockupFollowup, generateRoomMockup } from "@/lib/ai";
+import { generateMockupFollowup, generateRoomMockup, type ArtworkImage } from "@/lib/ai";
 import { watermarkMockup } from "@/lib/watermark";
 import { getCompanyProfile } from "@/lib/settings";
 import { signChatImage } from "@/lib/chat-images";
@@ -13,27 +15,124 @@ export const maxDuration = 60;
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_BYTES = 8 * 1024 * 1024; // 8MB(client 已先縮圖到最長邊 1536)
-const MAX_MOCKUPS_PER_SESSION = 3;
+const MAX_MOCKUPS_PER_SESSION = 6;
+const EXTERNAL_FETCH_TIMEOUT_MS = 10_000;
 
 function friendly(error: string, status = 400) {
   return NextResponse.json({ ok: false, error }, { status });
 }
 
-async function readArtworkJpg(slug: string): Promise<Buffer> {
-  // 優先走本機檔案系統(Vercel build 會把 public/ 一併打進函式產物);
-  // 讀不到就 fallback 用 fetch 打自己的網域,確保 serverless 環境也能拿到圖檔。
-  const localPath = path.join(process.cwd(), "public", "artworks", `${slug}.jpg`);
+// SSRF 基本防護:擋 loopback/私有網段/link-local,只讓外部圖片 URL 打到公開主機。
+// 輸入來源是後台管理員填的圖片網址(非終端使用者直接輸入),風險本來就低,這裡是保底防護。
+function isDisallowedIp(ip: string): boolean {
+  if (net.isIPv4(ip)) {
+    const [a, b] = ip.split(".").map(Number);
+    if (a === 127) return true; // 127.0.0.0/8 loopback
+    if (a === 10) return true; // 10.0.0.0/8
+    if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12
+    if (a === 192 && b === 168) return true; // 192.168.0.0/16
+    if (a === 169 && b === 254) return true; // 169.254.0.0/16 link-local
+    if (a === 0) return true; // 0.0.0.0/8
+    return false;
+  }
+  if (net.isIPv6(ip)) {
+    const lower = ip.toLowerCase();
+    if (lower === "::1") return true; // loopback
+    if (lower.startsWith("fe80:")) return true; // link-local
+    if (lower.startsWith("fc") || lower.startsWith("fd")) return true; // unique-local
+    if (lower.startsWith("::ffff:")) {
+      const v4 = lower.split(":").pop() ?? "";
+      if (net.isIPv4(v4)) return isDisallowedIp(v4);
+    }
+    return false;
+  }
+  return true; // 認不得的格式一律擋
+}
+
+async function assertPublicHttpsUrl(rawUrl: string): Promise<URL> {
+  let url: URL;
   try {
-    return await fs.readFile(localPath);
+    url = new URL(rawUrl);
   } catch {
-    const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-    const res = await fetch(`${base}/artworks/${slug}.jpg`);
-    if (!res.ok) {
-      throw new Error(`無法讀取作品圖檔:${slug}`);
+    throw new Error("圖片網址格式錯誤");
+  }
+  if (url.protocol !== "https:") {
+    throw new Error("圖片網址須為 https");
+  }
+  const hostname = url.hostname.toLowerCase();
+  if (hostname === "localhost" || hostname.endsWith(".localhost")) {
+    throw new Error("不允許的圖片網址");
+  }
+  if (net.isIP(hostname)) {
+    if (isDisallowedIp(hostname)) throw new Error("不允許的圖片網址");
+  } else {
+    const records = await dns.promises.lookup(hostname, { all: true });
+    if (records.length === 0 || records.some((r) => isDisallowedIp(r.address))) {
+      throw new Error("不允許的圖片網址");
+    }
+  }
+  return url;
+}
+
+// 讀後台填的圖片網址(product.images[0].url)。拒絕重新導向,避免繞過上面的主機檢查。
+async function fetchExternalArtworkImage(rawUrl: string): Promise<ArtworkImage> {
+  const url = await assertPublicHttpsUrl(rawUrl);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), EXTERNAL_FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url.toString(), { signal: controller.signal, redirect: "error" });
+    if (!res.ok) throw new Error(`圖片下載失敗:${res.status}`);
+    const mime = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+    if (!ALLOWED_MIME.has(mime)) {
+      throw new Error(`圖片格式不支援:${mime || "unknown"}`);
+    }
+    const declaredLength = Number(res.headers.get("content-length") ?? "0");
+    if (declaredLength > MAX_BYTES) {
+      throw new Error("圖片檔案過大");
     }
     const arrayBuffer = await res.arrayBuffer();
-    return Buffer.from(arrayBuffer);
+    if (arrayBuffer.byteLength > MAX_BYTES) {
+      throw new Error("圖片檔案過大");
+    }
+    return { mime, base64: Buffer.from(arrayBuffer).toString("base64") };
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+// 三層 fallback 取得作品原圖(供合成用):
+//  1) 本機 public/artworks/<slug>.jpg(9 件種子作品,建置時打包進函式產物)
+//  2) 後台填的 product.images[0].url(管理員新增的作品都走這層,可能是任何 mime)
+//  3) 既有 fallback:fetch 自己網域的 /artworks/<slug>.jpg(理論上只有本機檔案系統失效時的保險)
+async function readArtworkImage(
+  slug: string,
+  product: { images: { url: string }[] }
+): Promise<ArtworkImage> {
+  const localPath = path.join(process.cwd(), "public", "artworks", `${slug}.jpg`);
+  try {
+    const buf = await fs.readFile(localPath);
+    return { mime: "image/jpeg", base64: buf.toString("base64") };
+  } catch {
+    /* 找不到本機檔,繼續往下層 */
+  }
+
+  const externalUrl = product.images?.[0]?.url;
+  if (externalUrl) {
+    try {
+      return await fetchExternalArtworkImage(externalUrl);
+    } catch (err) {
+      console.error(`[chat/mockup] external artwork image failed (${slug}):`, err);
+      /* 繼續 fallback 到自家網域 */
+    }
+  }
+
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const res = await fetch(`${base}/artworks/${slug}.jpg`);
+  if (!res.ok) {
+    throw new Error(`無法讀取作品圖檔:${slug}`);
+  }
+  const arrayBuffer = await res.arrayBuffer();
+  return { mime: "image/jpeg", base64: Buffer.from(arrayBuffer).toString("base64") };
 }
 
 export async function POST(req: NextRequest) {
@@ -94,7 +193,7 @@ export async function POST(req: NextRequest) {
   // 作品需為上架中的 artwork
   const { data: product } = await supabase
     .from("products")
-    .select("name, price, price_rental_monthly")
+    .select("id, name, price, price_rental_monthly, images")
     .eq("slug", artworkSlug)
     .eq("product_type", "artwork")
     .eq("status", "active")
@@ -133,10 +232,10 @@ export async function POST(req: NextRequest) {
   // 生成 + 浮水印
   let mockupBuffer: Buffer;
   try {
-    const artworkJpg = await readArtworkJpg(artworkSlug);
+    const artwork = await readArtworkImage(artworkSlug, product);
     const rawMockup = await generateRoomMockup({
       roomPhoto: { mime, base64 },
-      artworkJpg,
+      artwork,
       artworkName: product.name,
     });
     mockupBuffer = await watermarkMockup(rawMockup);
@@ -210,5 +309,13 @@ export async function POST(req: NextRequest) {
     console.error("[chat/mockup] log failed:", err);
   }
 
-  return NextResponse.json({ ok: true, roomUrl, mockupUrl, followupText });
+  return NextResponse.json({
+    ok: true,
+    roomUrl,
+    mockupUrl,
+    followupText,
+    productId: product.id,
+    price: product.price,
+    priceRentalMonthly: product.price_rental_monthly,
+  });
 }

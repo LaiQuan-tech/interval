@@ -5,7 +5,12 @@ import dns from "dns";
 import net from "net";
 import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { generateMockupFollowup, generateRoomMockup, type ArtworkImage } from "@/lib/ai";
+import {
+  generateMockupFollowup,
+  generateRoomMockup,
+  type ArtworkImage,
+  type RoomPhoto,
+} from "@/lib/ai";
 import { watermarkMockup } from "@/lib/watermark";
 import { getCompanyProfile } from "@/lib/settings";
 import { signChatImage } from "@/lib/chat-images";
@@ -135,11 +140,30 @@ async function readArtworkImage(
   return { mime: "image/jpeg", base64: Buffer.from(arrayBuffer).toString("base64") };
 }
 
+// 示範空間白名單:客戶手邊沒有自家照片時可先選一張現成的室內照看效果。
+// slug 一律比對這份白名單(Set.has 是精確字串相等,不做任何路徑拼接判斷),
+// 不接受白名單以外的任何值 —— 避免 demoRoom 淪為可讀任意檔案的路徑穿越入口。
+const DEMO_ROOMS = new Set([
+  "living-nordic",
+  "dining-warm-wood",
+  "bedroom-minimal",
+  "study-quiet",
+]);
+
+// 讀示範空間圖:隨 repo 進版控(public/rooms/<slug>.jpg,build 時打包進函式產物),不做 runtime 生成。
+// 呼叫前 slug 必須已通過 DEMO_ROOMS.has() 檢查。
+async function readDemoRoomImage(slug: string): Promise<RoomPhoto> {
+  const localPath = path.join(process.cwd(), "public", "rooms", `${slug}.jpg`);
+  const buf = await fs.readFile(localPath);
+  return { mime: "image/jpeg", base64: buf.toString("base64") };
+}
+
 export async function POST(req: NextRequest) {
   let body: {
     sessionId?: string;
     artworkSlug?: string;
     image?: { mime?: string; base64?: string };
+    demoRoom?: string;
   };
   try {
     body = await req.json();
@@ -151,21 +175,43 @@ export async function POST(req: NextRequest) {
   const artworkSlug = String(body.artworkSlug ?? "").slice(0, 200);
   const mime = String(body.image?.mime ?? "");
   const base64 = String(body.image?.base64 ?? "");
+  const demoRoomSlug = String(body.demoRoom ?? "").slice(0, 100);
 
   if (!sessionId) return friendly("缺少 sessionId");
   if (!artworkSlug) return friendly("請選擇要模擬的作品");
-  if (!ALLOWED_MIME.has(mime)) return friendly("圖片格式需為 JPEG/PNG/WebP");
-  if (!base64) return friendly("缺少圖片內容");
+  if (!base64 && !demoRoomSlug) return friendly("請上傳空間照片或選擇示範空間");
 
-  let roomBuffer: Buffer;
-  try {
-    roomBuffer = Buffer.from(base64, "base64");
-  } catch {
-    return friendly("圖片內容無法解析");
-  }
-  if (roomBuffer.length === 0) return friendly("圖片內容無法解析");
-  if (roomBuffer.length > MAX_BYTES) {
-    return friendly("圖片檔案太大,請重新上傳(上限 8MB)");
+  // image(客戶實際上傳的居家照)與 demoRoom(示範空間白名單 slug)二擇一。
+  // 兩者都給時以 image 為準:demoRoom 只是「手邊沒照片」時的替代方案,客戶既然已經上傳了
+  // 自己的空間照片,代表更明確、更個人化的意圖,理應優先合成他自己的家。
+  const useDemoRoom = Boolean(demoRoomSlug) && !base64;
+
+  let roomPhoto: RoomPhoto;
+  let roomBuffer: Buffer | null = null;
+
+  if (useDemoRoom) {
+    if (!DEMO_ROOMS.has(demoRoomSlug)) {
+      return friendly("找不到這個示範空間,請重新選擇");
+    }
+    try {
+      roomPhoto = await readDemoRoomImage(demoRoomSlug);
+    } catch (err) {
+      console.error(`[chat/mockup] demo room read failed (${demoRoomSlug}):`, err);
+      return friendly("示範空間暫時無法使用,請稍後再試", 502);
+    }
+  } else {
+    if (!ALLOWED_MIME.has(mime)) return friendly("圖片格式需為 JPEG/PNG/WebP");
+    if (!base64) return friendly("缺少圖片內容");
+    try {
+      roomBuffer = Buffer.from(base64, "base64");
+    } catch {
+      return friendly("圖片內容無法解析");
+    }
+    if (roomBuffer.length === 0) return friendly("圖片內容無法解析");
+    if (roomBuffer.length > MAX_BYTES) {
+      return friendly("圖片檔案太大,請重新上傳(上限 8MB)");
+    }
+    roomPhoto = { mime, base64 };
   }
 
   const supabase = tryCreateAdminClient();
@@ -234,7 +280,7 @@ export async function POST(req: NextRequest) {
   try {
     const artwork = await readArtworkImage(artworkSlug, product);
     const rawMockup = await generateRoomMockup({
-      roomPhoto: { mime, base64 },
+      roomPhoto,
       artwork,
       artworkName: product.name,
     });
@@ -245,24 +291,33 @@ export async function POST(req: NextRequest) {
   }
 
   // 上傳原圖與模擬圖(路徑用 uuid;bucket 已轉私密,讀取一律走簽名網址)
+  // 示範空間圖本來就隨 repo 進版控、公開放在 public/rooms/ 底下,不是隱私資料,
+  // 不需要(也不應該)再多存一份進私密 bucket——只上傳模擬合成結果即可。
   const uuid =
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const roomPath = `rooms/${uuid}.jpg`;
+  const roomPath = useDemoRoom ? null : `rooms/${uuid}.jpg`;
   const mockupPath = `mockups/${uuid}.jpg`;
 
   try {
-    const [roomUpload, mockupUpload] = await Promise.all([
-      supabase.storage
+    if (roomPath && roomBuffer) {
+      const [roomUpload, mockupUpload] = await Promise.all([
+        supabase.storage
+          .from("chat-uploads")
+          .upload(roomPath, roomBuffer, { contentType: mime, upsert: false }),
+        supabase.storage
+          .from("chat-uploads")
+          .upload(mockupPath, mockupBuffer, { contentType: "image/jpeg", upsert: false }),
+      ]);
+      if (roomUpload.error) throw roomUpload.error;
+      if (mockupUpload.error) throw mockupUpload.error;
+    } else {
+      const { error } = await supabase.storage
         .from("chat-uploads")
-        .upload(roomPath, roomBuffer, { contentType: mime, upsert: false }),
-      supabase.storage
-        .from("chat-uploads")
-        .upload(mockupPath, mockupBuffer, { contentType: "image/jpeg", upsert: false }),
-    ]);
-    if (roomUpload.error) throw roomUpload.error;
-    if (mockupUpload.error) throw mockupUpload.error;
+        .upload(mockupPath, mockupBuffer, { contentType: "image/jpeg", upsert: false });
+      if (error) throw error;
+    }
   } catch (err) {
     console.error("[chat/mockup] upload failed:", err);
     return friendly("圖片上傳失敗,請稍後再試一次", 502);
@@ -270,8 +325,9 @@ export async function POST(req: NextRequest) {
 
   // bucket 已轉私密,不能再用 getPublicUrl——即時簽出短期網址讓客戶當下看得到圖。
   // 簽名失敗時回傳 null 是可接受的降級(訊息內容/導購話術仍照常回覆),不讓整支請求爆掉。
+  // 示範空間圖是 public/ 底下的相對路徑,直接可用,不需要簽名。
   const [roomUrl, mockupUrl] = await Promise.all([
-    signChatImage(roomPath),
+    useDemoRoom ? Promise.resolve(`/rooms/${demoRoomSlug}.jpg`) : signChatImage(roomPath!),
     signChatImage(mockupPath),
   ]);
 
@@ -290,10 +346,14 @@ export async function POST(req: NextRequest) {
     followupText = `這是《${product.name}》掛在您空間裡的模擬效果,喜歡這樣的氛圍嗎?想直接下單或需要正式報價單都歡迎告訴我。`;
   }
 
-  // 落庫:append 兩則訊息進 ai_chat_logs.messages(存路徑不存網址,避免簽名網址過期後破圖)
+  // 落庫:append 兩則訊息進 ai_chat_logs.messages(存路徑不存網址,避免簽名網址過期後破圖)。
+  // 示範空間例外:不是 chat-uploads 裡的私密路徑,直接存相對路徑進 imageUrl——
+  // resolveChatImageUrl(見 lib/chat-images.ts)已原生支援「以 / 開頭就原樣回傳,不簽名」。
   const nextMessages: ChatMessage[] = [
     ...existingMessages,
-    { role: "user", content: "(上傳了空間照片)", imagePath: roomPath },
+    useDemoRoom
+      ? { role: "user", content: "(選擇了示範空間)", imageUrl: `/rooms/${demoRoomSlug}.jpg` }
+      : { role: "user", content: "(上傳了空間照片)", imagePath: roomPath! },
     { role: "assistant", content: followupText, imagePath: mockupPath },
   ];
   try {

@@ -11,6 +11,12 @@ const SUGGESTIONS = [
   "會員點數怎麼累積?",
 ];
 
+// 居家擺放模擬入口說明:與 web/src/lib/ai.ts 的 MOCKUP_ENTRY_HINT 是同義的另一份文案。
+// 這裡是 client 元件,刻意不 import ai.ts(那邊有 fetch/Gemini 呼叫邏輯,import 進來會整包
+// 打進 client bundle),所以獨立維護一份——改動任一邊都要回頭同步對方。
+const MOCKUP_ENTRY_HINT =
+  "想看看作品掛在家裡的樣子，到該作品的商品頁點「先看看掛在我家的樣子」，用示範空間或上傳照片，約 30 秒就能生成模擬圖；也可以直接點下方 📷 上傳。";
+
 // widget 內部訊息:在 ChatMessage 之上加 UI 專用欄位(不回傳給後端)
 type WidgetMessage = ChatMessage & {
   kind?: "quote-card"; // 報價單準備中的系統樣式卡
@@ -42,8 +48,7 @@ export default function ChatWidget() {
   const [messages, setMessages] = useState<WidgetMessage[]>([
     {
       role: "assistant",
-      content:
-        "您好，我是小時光的智慧客服顧問！想了解藝術典藏、租賃買斷、私人旅程或會員制度，都可以直接問我。看到喜歡的作品，也可以點下方 📷 上傳您家的照片，我來為您生成掛在您空間中的模擬圖。",
+      content: `您好，我是小時光的智慧客服顧問！想了解藝術典藏、租賃買斷、私人旅程或會員制度，都可以直接問我。${MOCKUP_ENTRY_HINT}`,
     },
   ]);
   const [input, setInput] = useState("");

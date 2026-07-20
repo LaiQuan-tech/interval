@@ -451,7 +451,34 @@ git commit -m "feat(admin): 新增手機底部分頁列與更多面板"
 ## Task 5: 組裝後台外殼並修掉容器缺陷
 
 **Files:**
+- Create: `web/src/components/admin/AdminPageTitle.tsx`
 - Modify: `web/src/app/admin/layout.tsx`（整檔改寫，守衛邏輯保留）
+
+- [ ] **Step 0: 新增後台頁面標題（同時是後台唯一的 `<h1>`）**
+
+舊版 layout 有 `<h1>後台管理</h1>`；新外殼若不補回，整個 `/admin/*` 將沒有 level-1 標題（側邊欄品牌名是 `<div>`），是無障礙迴歸。同時 spec 要求手機頂部列顯示「**目前頁面標題**」而非固定字串，兩者用同一個元件一併解決。
+
+Create `web/src/components/admin/AdminPageTitle.tsx`：
+
+```tsx
+"use client";
+
+import { usePathname } from "next/navigation";
+import { ADMIN_NAV, isAdminNavActive } from "./AdminNavItems";
+
+// 後台唯一的 <h1>。手機:頂部標題列;桌機:視覺上由側邊欄品牌名代替,
+// 故 sr-only 隱藏但保留在無障礙樹中,避免整個後台沒有 level-1 標題。
+export default function AdminPageTitle() {
+  const pathname = usePathname();
+  const current = ADMIN_NAV.find((item) => isAdminNavActive(pathname, item.href));
+
+  return (
+    <h1 className="border-b border-line px-4 py-3 font-serif text-[15px] text-ink lg:sr-only">
+      {current?.label ?? "後台"}
+    </h1>
+  );
+}
+```
 
 - [ ] **Step 1: 改寫後台 layout**
 
@@ -464,6 +491,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminBottomNav from "@/components/admin/AdminBottomNav";
+import AdminPageTitle from "@/components/admin/AdminPageTitle";
 import type { AdminBadgeKey } from "@/components/admin/AdminNavItems";
 
 export const dynamic = "force-dynamic";
@@ -487,17 +515,21 @@ export default async function AdminLayout({
     .maybeSingle();
   if (profile?.role !== "admin") redirect("/");
 
-  // 待處理數量:任一查詢失敗都不能讓整個後台掛掉,失敗即視為 0(不顯示徽章)
+  // 待處理數量。注意:Supabase 查詢失敗不會拋例外,錯誤在回傳值的 error 欄位,
+  // 所以必須顯式檢查並記錄——否則欄位/權限一旦變動,徽章會永遠是 0 而無人察覺。
+  // 外層 try/catch 只是防網路層等非預期例外,不讓輔助資訊拖垮整個後台。
   const badges: Record<AdminBadgeKey, number> = { orders: 0, quotes: 0 };
   try {
     const [pendingOrders, draftQuotes] = await Promise.all([
       supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "pending"),
       supabase.from("quotes").select("id", { count: "exact", head: true }).eq("status", "draft"),
     ]);
+    if (pendingOrders.error) console.error("[admin] 待付款訂單數查詢失敗", pendingOrders.error);
+    if (draftQuotes.error) console.error("[admin] 草稿報價數查詢失敗", draftQuotes.error);
     badges.orders = pendingOrders.count ?? 0;
     badges.quotes = draftQuotes.count ?? 0;
-  } catch {
-    /* 徽章是輔助資訊,查不到就不顯示 */
+  } catch (err) {
+    console.error("[admin] 徽章查詢發生非預期例外", err);
   }
 
   const email = user.email ?? "";
@@ -507,9 +539,9 @@ export default async function AdminLayout({
       <AdminSidebar email={email} badges={badges} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="border-b border-line px-4 py-3 lg:hidden">
-          <span className="font-serif text-[15px] text-ink">小時光後台</span>
-        </div>
+        {/* 後台唯一的 h1(見下方 AdminPageTitle)。不可包進 lg:hidden 容器,
+            否則桌機會被 display:none 移出無障礙樹,整個後台就沒有 level-1 標題。 */}
+        <AdminPageTitle />
 
         {/* pb-20 讓最後一列不被手機底部分頁列蓋住 */}
         <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-20 pt-5 sm:px-6 lg:pb-10">
@@ -550,10 +582,20 @@ Expected: `sidebar: true` 但 `sidebarVisible: false`（`hidden lg:flex`）、`b
 
 再點側邊欄各項，確認 active 高亮跟著換頁；`/admin` 只在總覽頁亮起，不會在子頁一起亮。
 
+兩種寬度都要另外執行這段，確認 `<h1>` 存在且在桌機仍留在無障礙樹中（`display:none` 就是沒修好）：
+```js
+JSON.stringify({
+  h1Count: document.querySelectorAll('h1').length,
+  h1Text: document.querySelector('h1')?.textContent,
+  h1InA11yTree: getComputedStyle(document.querySelector('h1')).display !== 'none',
+})
+```
+Expected（`/admin/orders`）：`h1Count: 1`、`h1Text: "訂單"`、`h1InA11yTree: true`。手機再切到 `/admin/settings` 確認變成「設定」。
+
 - [ ] **Step 4: Commit**
 
 ```bash
-git add web/src/app/admin/layout.tsx
+git add web/src/app/admin/layout.tsx web/src/components/admin/AdminPageTitle.tsx
 git commit -m "feat(admin): 後台外殼改為側邊欄+底部分頁,修正未定義的 iv-container
 
 iv-container 未定義導致內容無最大寬度與留白、寬表格被裁切,

@@ -20,4 +20,7 @@ dist/
 .railway
 coverage/
 
+# 本機 dev server 設定(各人 port 不同,不進版控)
+.claude/
+
 *.tsbuildinfo

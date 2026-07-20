@@ -12,6 +12,7 @@ export default function QuickAddButton({
   label = "加入購物車 →",
   addedLabel = "已加入購物車 ✓",
   className = "",
+  onAdded,
 }: {
   product: { id: string; slug: string; name: string };
   mode: PurchaseMode;
@@ -19,6 +20,7 @@ export default function QuickAddButton({
   label?: string;
   addedLabel?: string;
   className?: string;
+  onAdded?: () => void;
 }) {
   const [added, setAdded] = useState(false);
 
@@ -32,6 +34,7 @@ export default function QuickAddButton({
         openCart();
         setAdded(true);
         setTimeout(() => setAdded(false), 1800);
+        onAdded?.();
       }}
       className={className}
     >

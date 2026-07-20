@@ -1,20 +1,12 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import AdminSidebar from "@/components/admin/AdminSidebar";
+import AdminBottomNav from "@/components/admin/AdminBottomNav";
+import type { AdminBadgeKey } from "@/components/admin/AdminNavItems";
 
 export const dynamic = "force-dynamic";
 
-const NAV = [
-  { href: "/admin", label: "總覽" },
-  { href: "/admin/orders", label: "訂單" },
-  { href: "/admin/quotes", label: "報價" },
-  { href: "/admin/products", label: "商品" },
-  { href: "/admin/members", label: "會員" },
-  { href: "/admin/bookings", label: "預約" },
-  { href: "/admin/settings", label: "設定" },
-];
-
-// 後台守衛:必須登入且 profiles.role = 'admin'(仿 realreal 的 layout 守衛)
+// 後台守衛:必須登入且 profiles.role = 'admin'
 export default async function AdminLayout({
   children,
 }: {
@@ -33,26 +25,37 @@ export default async function AdminLayout({
     .maybeSingle();
   if (profile?.role !== "admin") redirect("/");
 
+  // 待處理數量:任一查詢失敗都不能讓整個後台掛掉,失敗即視為 0(不顯示徽章)
+  const badges: Record<AdminBadgeKey, number> = { orders: 0, quotes: 0 };
+  try {
+    const [pendingOrders, draftQuotes] = await Promise.all([
+      supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      supabase.from("quotes").select("id", { count: "exact", head: true }).eq("status", "draft"),
+    ]);
+    badges.orders = pendingOrders.count ?? 0;
+    badges.quotes = draftQuotes.count ?? 0;
+  } catch {
+    /* 徽章是輔助資訊,查不到就不顯示 */
+  }
+
+  const email = user.email ?? "";
+
   return (
-    <div className="iv-container py-6 sm:py-8">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold">後台管理</h1>
-        <span className="text-xs text-ink-soft">{user.email}</span>
+    <div className="flex flex-1">
+      <AdminSidebar email={email} badges={badges} />
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="border-b border-line px-4 py-3 lg:hidden">
+          <span className="font-serif text-[15px] text-ink">小時光後台</span>
+        </div>
+
+        {/* pb-20 讓最後一列不被手機底部分頁列蓋住 */}
+        <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-20 pt-5 sm:px-6 lg:pb-10">
+          {children}
+        </main>
       </div>
 
-      <nav className="-mx-4 mb-6 flex gap-2 overflow-x-auto border-b border-line px-4 pb-3 sm:mx-0 sm:px-0">
-        {NAV.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="whitespace-nowrap rounded-full border border-line bg-card px-4 py-2 text-sm font-medium hover:border-accent hover:text-accent"
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
-
-      {children}
+      <AdminBottomNav email={email} badges={badges} />
     </div>
   );
 }

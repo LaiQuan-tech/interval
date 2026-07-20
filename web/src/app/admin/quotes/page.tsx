@@ -25,12 +25,14 @@ export default async function AdminQuotesPage() {
         {quotes.map((q) => (
           <div key={q.id} className="iv-card !p-3.5">
             <div className="flex items-start justify-between gap-2">
-              <Link href={`/admin/quotes/${q.id}`} className="font-medium text-ink hover:text-accent">
-                {q.quote_no}
+              <div className="min-w-0">
+                <Link href={`/admin/quotes/${q.id}`} className="font-medium text-ink hover:text-accent">
+                  {q.quote_no}
+                </Link>
                 {q.created_by === "ai" && (
                   <span className="iv-chip ml-2 bg-warn-soft text-warn">AI</span>
                 )}
-              </Link>
+              </div>
               <span
                 className={`iv-chip shrink-0 ${
                   q.status === "draft"

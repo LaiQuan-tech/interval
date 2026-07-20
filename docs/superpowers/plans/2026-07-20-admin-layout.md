@@ -357,8 +357,10 @@ export default function AdminBottomNav({
         />
       )}
 
+      {/* 面板與 nav 一起包在外層 fixed 容器內,面板用 bottom-full 貼齊 nav 上緣——
+          不要寫死 bottom-14 之類的高度,nav 高度由內容決定,寫死必然漂移。 */}
       {moreOpen && (
-        <div className="fixed inset-x-0 bottom-14 z-50 border-t border-line bg-paper p-3 lg:hidden">
+        <div className="absolute inset-x-0 bottom-full border-t border-line bg-paper p-3">
           {secondary.map((item) => {
             const active = isAdminNavActive(pathname, item.href);
             return (
@@ -406,7 +408,9 @@ export default function AdminBottomNav({
               <AdminNavIcon d={item.icon} />
               {item.label}
               {count > 0 && (
-                <span className="absolute right-1/2 top-1 ml-3 min-w-4 translate-x-full rounded-full bg-accent px-1 text-center text-[10px] leading-4 text-paper">
+                /* left-1/2 單獨即可;實測 right-1/2+ml-3+translate-x-full 渲染結果相同,
+                   其中 ml-3 完全無效果(絕對定位求解會抵銷 margin),不要再寫回去。 */
+                <span className="absolute left-1/2 top-1 min-w-4 rounded-full bg-accent px-1 text-center text-[10px] leading-4 text-paper">
                   {count}
                 </span>
               )}

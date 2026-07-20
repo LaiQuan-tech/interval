@@ -534,16 +534,19 @@ Expected: lint 無錯誤、typecheck 無輸出、build 顯示 `✓ Compiled succ
 
 桌機（視窗寬 1280px）執行：
 ```js
+// 注意:Task 4 修正後 `fixed` 在外層 wrapper div 上(為了讓「更多」面板用
+// bottom-full 貼齊),不在 <nav> 上,所以這裡選 wrapper 而非 nav.fixed。
 JSON.stringify({
   sidebar: !!document.querySelector('aside'),
-  bottomNav: getComputedStyle(document.querySelector('nav.fixed')).display,
+  sidebarVisible: !!document.querySelector('aside')?.offsetParent,
+  bottomNav: getComputedStyle(document.querySelector('div.fixed.bottom-0')).display,
   overflow: document.body.scrollWidth <= window.innerWidth,
 })
 ```
-Expected: `sidebar: true`、`bottomNav: "none"`、`overflow: true`。
+Expected: `sidebar: true`、`sidebarVisible: true`、`bottomNav: "none"`、`overflow: true`。
 
 手機（視窗寬 390px）執行同一段。
-Expected: `sidebar` 的 `aside` 存在但不可見（`hidden lg:flex`）、`bottomNav: "flex"`、`overflow: true`（無水平溢出）。
+Expected: `sidebar: true` 但 `sidebarVisible: false`（`hidden lg:flex`）、`bottomNav` 非 `"none"`（wrapper 是普通 block，內層 `<nav>` 才是 flex）、`overflow: true`（無水平溢出）。
 
 再點側邊欄各項，確認 active 高亮跟著換頁；`/admin` 只在總覽頁亮起，不會在子頁一起亮。
 

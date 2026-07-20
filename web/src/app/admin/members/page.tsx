@@ -30,7 +30,47 @@ export default async function AdminMembersPage() {
   return (
     <div>
       <h2 className="mb-4 font-bold">會員管理</h2>
-      <div className="iv-table-wrap">
+
+      <div className="flex flex-col gap-2.5 lg:hidden">
+        {members.map((m) => {
+          const tier = m.tier_slug ? tierMap.get(m.tier_slug) : null;
+          const expired = m.tier_expires_at ? new Date(m.tier_expires_at) < new Date() : false;
+          const balance = balanceMap.get(m.id) ?? 0;
+          return (
+            <div key={m.id} className="iv-card !p-3.5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="font-medium text-ink break-words">{m.name || "—"}</span>
+                </div>
+                {tier ? (
+                  <span className="iv-chip shrink-0 bg-accent-soft text-accent">{tier.name}</span>
+                ) : (
+                  <span className="shrink-0 text-ink-soft">一般會員</span>
+                )}
+              </div>
+              <div className="mt-1.5 text-[13px] text-ink-soft break-words">{m.email}</div>
+              {m.phone && (
+                <div className="mt-1 text-[13px] text-ink-soft break-words">{m.phone}</div>
+              )}
+              {tier && expired && <div className="mt-1 text-xs text-danger">(已過期)</div>}
+              {tier && !expired && m.tier_expires_at && (
+                <div className="mt-1 text-xs text-ink-soft">至 {formatDate(m.tier_expires_at)}</div>
+              )}
+              <div className="mt-1 text-xs text-ink-soft">註冊於 {formatDate(m.created_at)}</div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="text-sm font-semibold">{formatPoints(balance)}</span>
+                <AdjustPointsForm userId={m.id} />
+                <RoleToggle userId={m.id} role={m.role} />
+              </div>
+            </div>
+          );
+        })}
+        {members.length === 0 && (
+          <div className="iv-card text-center text-ink-soft">還沒有會員</div>
+        )}
+      </div>
+
+      <div className="iv-table-wrap hidden lg:block">
         <table className="w-full min-w-160 border-collapse text-sm">
           <thead>
             <tr className="border-b border-line text-left text-ink-soft">

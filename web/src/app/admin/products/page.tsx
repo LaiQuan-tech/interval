@@ -30,7 +30,48 @@ export default async function AdminProductsPage() {
         </Link>
       </div>
 
-      <div className="iv-table-wrap">
+      <div className="flex flex-col gap-2.5 lg:hidden">
+        {products.map((p) => (
+          <div key={p.id} className="iv-card !p-3.5">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <Link
+                  href={`/admin/products/${p.id}`}
+                  className="font-medium text-ink hover:text-accent break-words"
+                >
+                  {p.name}
+                </Link>
+              </div>
+              <span
+                className={`iv-chip shrink-0 ${
+                  p.status === "active" ? "bg-ok-soft text-ok" : "bg-line text-ink-soft"
+                }`}
+              >
+                {STATUS_LABEL[p.status]}
+              </span>
+            </div>
+            <div className="mt-1.5 text-[13px] text-ink-soft break-words">
+              /{p.slug}
+              {p.featured && " · 精選"}
+            </div>
+            <div className="mt-1 text-[13px] text-ink-soft">
+              {formatTWD(p.price)} · 庫存 {p.stock}
+            </div>
+            <div className="mt-3">
+              <Link href={`/admin/products/${p.id}`} className="iv-btn-ghost">
+                編輯
+              </Link>
+            </div>
+          </div>
+        ))}
+        {products.length === 0 && (
+          <div className="iv-card text-center text-ink-soft">
+            還沒有商品,點右上角「新增商品」開始上架。
+          </div>
+        )}
+      </div>
+
+      <div className="iv-table-wrap hidden lg:block">
         <table className="w-full min-w-130 border-collapse text-sm">
           <thead>
             <tr className="border-b border-line text-left text-ink-soft">

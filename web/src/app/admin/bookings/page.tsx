@@ -39,7 +39,39 @@ export default async function AdminBookingsPage({
         ))}
       </div>
 
-      <div className="iv-table-wrap">
+      <div className="flex flex-col gap-2.5 lg:hidden">
+        {bookings.map((b) => (
+          <div key={b.id} className="iv-card !p-3.5">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <span className="font-medium text-ink break-words">{b.name}</span>
+              </div>
+              <span className="iv-chip shrink-0 bg-accent-soft text-accent">
+                {BOOKING_STATUS_LABEL[b.status] ?? b.status}
+              </span>
+            </div>
+            <div className="mt-1.5 text-[13px] text-ink-soft break-words">{b.email}</div>
+            {b.phone && (
+              <div className="mt-1 text-[13px] text-ink-soft break-words">{b.phone}</div>
+            )}
+            <div className="mt-1 text-[13px] text-ink-soft">
+              {b.purpose || "—"} · {b.visit_date ? formatDate(b.visit_date) : "—"}
+            </div>
+            {b.message && (
+              <div className="mt-1 text-[13px] text-ink-soft break-words">{b.message}</div>
+            )}
+            <div className="mt-1 text-xs text-ink-soft">送出於 {formatDateTime(b.created_at)}</div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <BookingStatusButtons bookingId={b.id} status={b.status} />
+            </div>
+          </div>
+        ))}
+        {bookings.length === 0 && (
+          <div className="iv-card text-center text-ink-soft">沒有符合條件的預約</div>
+        )}
+      </div>
+
+      <div className="iv-table-wrap hidden lg:block">
         <table className="w-full min-w-160 border-collapse text-sm">
           <thead>
             <tr className="border-b border-line text-left text-ink-soft">

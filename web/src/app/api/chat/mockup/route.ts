@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import dns from "dns";
 import net from "net";
+import { createHash } from "crypto";
 import { tryCreateAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -162,6 +163,53 @@ async function readDemoRoomImage(slug: string): Promise<RoomPhoto> {
   return { mime: "image/jpeg", base64: buf.toString("base64") };
 }
 
+// ---------- 示範空間模擬圖預生成快取 ----------
+// 示範空間組合有限(作品 × 4 個示範空間):同一組合先前已生成過就直接複用簽名網址,
+// 不再呼叫 Gemini(單次呼叫實測 15~18 秒)。只影響 demoRoom 分支,上傳自家照片的路徑不受影響
+// (每張都是新輸入,天生無法快取)。
+
+// 快取鍵之一:作品圖來源字串的短 hash。判斷邏輯刻意對齊 readArtworkImage() 的前兩層
+// (本機檔優先、其次後台填的網址)——只需要「這次會用哪個來源」的字串,不需要真的讀取內容。
+// 管理員換了作品圖(不論是換本機檔案還是改後台網址)時,來源字串跟著變、雜湊值跟著變,
+// 快取鍵自動失效,不會端出舊圖。
+async function artworkImageSourceKey(
+  slug: string,
+  product: { images: { url: string }[] }
+): Promise<string> {
+  const localPath = path.join(process.cwd(), "public", "artworks", `${slug}.jpg`);
+  try {
+    await fs.access(localPath);
+    return `local:${slug}`;
+  } catch {
+    /* 本機無此檔,往下看後台填的網址 */
+  }
+  const externalUrl = product.images?.[0]?.url;
+  return externalUrl ? `url:${externalUrl}` : `local:${slug}`;
+}
+
+// 示範空間模擬圖的確定性快取路徑:同一(作品, 空間, 作品圖來源)組合永遠算出同一個路徑,
+// 存在 chat-uploads bucket(與其他對話圖片同一個私密 bucket,讀取一律走簽名網址)。
+function demoMockupCachePath(artworkSlug: string, roomSlug: string, sourceKey: string): string {
+  const hash = createHash("sha1").update(sourceKey).digest("hex").slice(0, 8);
+  return `demo-mockups/${artworkSlug}--${roomSlug}--${hash}.jpg`;
+}
+
+// 快取命中時的接續導購文案:刻意不呼叫 AI——gemma 一次文字呼叫要 1~3 秒,會吃掉「命中直接
+// 回應」的意義。文字內容比照 generateMockupFollowup()(web/src/lib/ai.ts)裡無 AI key 時的
+// fallback 模板;兩處各自維護一份是刻意的(避免這支 route 依賴 ai.ts 近期正在變動的其他區塊),
+// 改一處記得回頭同步另一處。
+function mockupFollowupFallback(params: {
+  artworkName: string;
+  monthlyPrice: number | null;
+  buyoutPrice: number;
+}): string {
+  const { artworkName, monthlyPrice, buyoutPrice } = params;
+  const priceLine = monthlyPrice
+    ? `月租 NT$${monthlyPrice}、買斷 NT$${buyoutPrice}`
+    : `買斷 NT$${buyoutPrice}`;
+  return `這是《${artworkName}》掛在您空間裡的模擬效果,喜歡這樣的氛圍嗎?這件作品目前${priceLine},喜歡的話可以直接到藝術典藏頁加入購物車,選擇月租或買斷都很方便。`;
+}
+
 export async function POST(req: NextRequest) {
   let body: {
     sessionId?: string;
@@ -269,6 +317,56 @@ export async function POST(req: NextRequest) {
     .eq("session_id", sessionId)
     .maybeSingle();
   const existingMessages = (existingLog?.messages ?? []) as ChatMessage[];
+
+  // 示範空間快取命中檢查:必須放在下面兩道 mockup 專屬額度(session 6 張、IP 每日 15 張)之前——
+  // 命中不花 AI 錢,不應該扣客戶額度。上面的 ai_rate_check(通用聊天防濫用)已照常執行過,不受影響。
+  let demoCachePath: string | null = null;
+  if (useDemoRoom) {
+    const sourceKey = await artworkImageSourceKey(artworkSlug, product);
+    demoCachePath = demoMockupCachePath(artworkSlug, demoRoomSlug, sourceKey);
+    // 直接嘗試簽名網址當存在性檢查:物件不存在時 createSignedUrl 會回 error,這正是「快取未命中」
+    // 的預期路徑,不當成錯誤記錄(避免每次未命中都在 log 灌一行雜訊)。
+    const { data: cached } = await supabase.storage
+      .from("chat-uploads")
+      .createSignedUrl(demoCachePath, 60 * 60);
+    if (cached?.signedUrl) {
+      const roomUrl = `/rooms/${demoRoomSlug}.jpg`;
+      const followupText = mockupFollowupFallback({
+        artworkName: product.name,
+        monthlyPrice: product.price_rental_monthly ?? null,
+        buyoutPrice: product.price,
+      });
+
+      const nextMessages: ChatMessage[] = [
+        ...existingMessages,
+        { role: "user", content: "(選擇了示範空間)", imageUrl: roomUrl },
+        { role: "assistant", content: followupText, imagePath: demoCachePath },
+      ];
+      try {
+        await supabase.from("ai_chat_logs").upsert({
+          session_id: sessionId,
+          user_id: userId,
+          messages: nextMessages,
+          message_count: nextMessages.length,
+          ip,
+          user_agent: req.headers.get("user-agent") ?? "",
+        });
+      } catch (err) {
+        console.error("[chat/mockup] log failed (cache hit):", err);
+      }
+
+      return NextResponse.json({
+        ok: true,
+        roomUrl,
+        mockupUrl: cached.signedUrl,
+        followupText,
+        productId: product.id,
+        price: product.price,
+        priceRentalMonthly: product.price_rental_monthly,
+      });
+    }
+  }
+
   const mockupCount = existingMessages.filter(
     (m) => m.role === "assistant" && Boolean(m.imageUrl || m.imagePath)
   ).length;
@@ -333,7 +431,8 @@ export async function POST(req: NextRequest) {
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const roomPath = useDemoRoom ? null : `rooms/${uuid}.jpg`;
-  const mockupPath = `mockups/${uuid}.jpg`;
+  // 示範空間:寫進上面快取檢查算出的確定性路徑(取代隨機 uuid 路徑),下一位客戶同組合才能命中。
+  const mockupPath = useDemoRoom ? demoCachePath! : `mockups/${uuid}.jpg`;
 
   try {
     if (roomPath && roomBuffer) {
@@ -348,9 +447,11 @@ export async function POST(req: NextRequest) {
       if (roomUpload.error) throw roomUpload.error;
       if (mockupUpload.error) throw mockupUpload.error;
     } else {
+      // 這裡只會是 useDemoRoom 的情況(roomPath 才會是 null)。demoCachePath 是確定性路徑,
+      // upsert:true 讓並發的兩個未命中請求(理論上少見但可能發生)不會互相踩到 409。
       const { error } = await supabase.storage
         .from("chat-uploads")
-        .upload(mockupPath, mockupBuffer, { contentType: "image/jpeg", upsert: false });
+        .upload(mockupPath, mockupBuffer, { contentType: "image/jpeg", upsert: true });
       if (error) throw error;
     }
   } catch (err) {

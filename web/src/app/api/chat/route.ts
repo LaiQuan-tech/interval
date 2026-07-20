@@ -169,7 +169,7 @@ export async function POST(req: NextRequest) {
       try {
         if (supabase && hasQuoteIntent(fullConvo)) {
           const readiness = await classifyQuoteReady(fullConvo);
-          if (readiness.ready && readiness.email) {
+          if (readiness.needsQuote && readiness.email) {
             const quote = await createQuoteDraftFromSession(
               sessionId,
               fullConvo,

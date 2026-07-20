@@ -378,7 +378,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     console.error("[chat/mockup] followup generation failed:", err);
-    followupText = `這是《${product.name}》掛在您空間裡的模擬效果,喜歡這樣的氛圍嗎?想直接下單或需要正式報價單都歡迎告訴我。`;
+    followupText = `這是《${product.name}》掛在您空間裡的模擬效果,喜歡這樣的氛圍嗎?歡迎直接到藝術典藏頁把這件作品加入購物車,選擇月租或買斷下單。`;
   }
 
   // 落庫:append 兩則訊息進 ai_chat_logs.messages(存路徑不存網址,避免簽名網址過期後破圖)。

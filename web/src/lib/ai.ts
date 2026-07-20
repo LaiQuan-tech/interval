@@ -78,21 +78,22 @@ ${rateLines || "(費率卡尚未設定)"}
 3. 不要編造不存在的作品、旅程、價格或政策。
 4. 適時(但不要糾纏)邀請客戶留下聯絡方式(email 或電話)。
 
-【報價規則 — 非常重要】
-- 絕不要自己報出任何價格或估算金額(網站上公開標示的租賃/買斷/旅程價格可以引用,但客製需求一律不自行估價)。
-- 當客戶詢問客製畫作、客製旅程規劃、企業空間租賃或其他報價需求時:說明我們會準備一份正式報價單寄給他,並請他提供 email。
-- 拿到 email 後,告訴客戶:報價單將在專人確認後寄到他的信箱。
+【報價規則 — 非常重要,務必與下方【引導下單】區分清楚】
+- 絕不要自己報出任何價格或估算金額(網站上公開標示的租賃/買斷/旅程/會員價格可以引用,但客製需求一律不自行估價)。
+- 只有以下情況才走報價流程:客製畫作、客製旅程規劃、企業或大量/批發採購、包場等「商城沒有現成品項、需要議價」的需求。遇到這類需求,說明我們會準備一份正式報價單寄給他,並請他提供 email;拿到 email 後,告訴客戶報價單將在專人確認後寄到他的信箱。
+- 商城已有的現貨作品、旅程、一般會員方案,絕不進入報價流程,也不要為此跟客戶要 email 準備報價單——一律改用下方【引導下單】的方式回應。
+- 如果無法判斷客戶要的是「收藏/報名商城現有的品項」還是「客製一份全新的」,先主動問一句釐清(例如:「您是想收藏現有的這幅,還是想量身客製一幅呢?」),不要預設把人推進報價或結帳。
 
-【引導下單】
-- 客戶對特定作品或旅程有興趣時,引導他到藝術典藏或私人旅程頁面加入購物車結帳;作品可提醒月租或買斷兩種方式。
+【引導下單 — 現貨作品/行程/會員】
+- 商城已有的作品、旅程、會員方案都是公開標價。客戶對特定作品或旅程有興趣時,直接引導他到藝術典藏或私人旅程頁面加入購物車結帳;作品可提醒月租或買斷兩種方式。
 - 已收到報價單的客戶,引導他點開報價單連結按「接受報價」即可自動成立訂單。
-- 客戶詢問會員權益時,可簡介三級會員與點數制度,並引導至會員沙龍頁面或預約參訪。
+- 客戶詢問一般會員權益時,簡介三級會員與點數制度,並引導至會員沙龍頁面或預約參訪加入;只有企業會員/客製方案才適用上面的報價規則。
 
 【居家擺放模擬 — 重要導購工具,要盡量主動推薦】
 - 只要客戶對某件作品表達興趣、猶豫尺寸或風格是否適合家裡、或問起「掛起來感覺如何」「適不適合我家」之類的問題,就主動且自然地提議:
   「想看看掛起來的感覺,${MOCKUP_ENTRY_HINT}」。
 - 不要每一輪都硬推,但只要話題碰到具體作品與居家擺放,就是最好的邀請時機。
-- 客戶完成擺放模擬後,接續詢問對效果的感覺,並自然帶到該作品的月租/買斷公開標價,詢問是否要直接下單或準備正式報價單(報價規則不變:客製需求絕不自行報價)。`;
+- 客戶完成擺放模擬後,接續詢問對效果的感覺,並自然帶到該作品的月租/買斷公開標價,引導直接加入購物車下單(這是現貨作品,不進報價流程)。`;
 }
 
 // ---------- 串流聊天回覆(SSE) ----------
@@ -237,17 +238,29 @@ async function callJSON<T>(system: string, user: string, schema: SchemaNode): Pr
 }
 
 // ---------- 報價意圖 ----------
+// 廉價前置過濾:只決定要不要花一次分類呼叫,故意寬鬆(含現貨詞如月租/買斷/價格)。
+// 真正的「客製 vs 現貨」分流由 classifyQuoteReady() 的 AI 分類器(或無 key 時的
+// CUSTOM_KEYWORDS fallback)決定,不在這一關把關。
 const QUOTE_KEYWORDS =
-  /報價|估價|價格|多少錢|費用|預算|批發|大量|採購|訂閱|月租|租金|買斷|入會|會員方案|客製|旅程規劃|quote|price/i;
+  /報價|估價|價格|多少錢|費用|預算|批發|大量|採購|訂閱|月租|租金|買斷|入會|會員方案|客製|旅程規劃|專屬|量身|訂製|企業|包場|quote|price/i;
 
 export function hasQuoteIntent(messages: ChatMessage[]) {
   return messages.some((m) => m.role === "user" && QUOTE_KEYWORDS.test(m.content));
 }
 
+// 明確客製/企業大量詞——與上面寬鬆的 QUOTE_KEYWORDS 不同,這組刻意排除
+// 月租/買斷/價格等現貨詞,只用來判定「是否為需要正式報價單的客製需求」。
+const CUSTOM_KEYWORDS = /客製|訂製|量身|專屬|企業|大量|批發|包場|旅程規劃/;
+
+function hasCustomIntent(messages: ChatMessage[]) {
+  return messages.some((m) => m.role === "user" && CUSTOM_KEYWORDS.test(m.content));
+}
+
 const EMAIL_RE = /[\w.+-]+@[\w-]+\.[\w.]+/;
 
 export type QuoteReadiness = {
-  ready: boolean;
+  // 是否為需要正式報價單的「客製/企業大量」需求(相對於詢問商城現有品項)。
+  needsQuote: boolean;
   email: string;
   name: string;
   phone: string;
@@ -259,13 +272,14 @@ export async function classifyQuoteReady(messages: ChatMessage[]): Promise<Quote
     .join("\n");
 
   if (!hasGeminiKey()) {
-    // fallback:客戶訊息中出現 email 且有報價關鍵字即視為 ready
+    // fallback:客戶訊息中出現 email 且有明確客製詞(CUSTOM_KEYWORDS)才視為需要報價單。
+    // 現貨詞(月租/買斷/價格)不觸發——避免現貨詢價被誤推進報價流程。
     const emailMatch = messages
       .filter((m) => m.role === "user")
       .map((m) => m.content.match(EMAIL_RE)?.[0])
       .find(Boolean);
     return {
-      ready: Boolean(emailMatch) && hasQuoteIntent(messages),
+      needsQuote: Boolean(emailMatch) && hasCustomIntent(messages),
       email: emailMatch ?? "",
       name: "",
       phone: "",
@@ -273,21 +287,27 @@ export async function classifyQuoteReady(messages: ChatMessage[]): Promise<Quote
   }
 
   const result = await callJSON<QuoteReadiness>(
-    "你是對話分析器。判斷客戶是否已表達報價需求並提供了 email。只擷取客戶實際說過的資訊,沒有就留空字串。",
-    `對話紀錄:\n${transcript}\n\n請判斷:ready(是否可以為客戶準備報價單:需同時有明確報價意圖與 email)、email、name、phone。`,
+    `你是對話分析器。判斷客戶的需求屬於「客製/報價」還是「商城現有品項/下單」,並擷取客戶提供的聯絡資訊。
+
+客製/報價類(needsQuote=true):客製畫作、客製旅程規劃、企業或大量/批發採購、包場等——商城沒有現成品項、需要議價的需求。
+現貨/下單類(needsQuote=false):詢問商城現有作品、旅程、一般會員方案——這些都已公開標價,不算報價需求,即使客戶問到價格也一樣是 false。
+無法判斷客戶要的是商城現有品項還是客製一份新的時,一律回傳 needsQuote=false(交由客服人員口頭詢問澄清,不要臆測)。
+
+只擷取客戶實際說過的聯絡資訊,沒有就留空字串。`,
+    `對話紀錄:\n${transcript}\n\n請判斷:needsQuote(是否為需要正式報價單的客製/企業大量需求)、email、name、phone。`,
     {
       type: "object",
       properties: {
-        ready: { type: "boolean" },
+        needsQuote: { type: "boolean" },
         email: { type: "string" },
         name: { type: "string" },
         phone: { type: "string" },
       },
-      required: ["ready", "email", "name", "phone"],
+      required: ["needsQuote", "email", "name", "phone"],
       additionalProperties: false,
     }
   );
-  return result ?? { ready: false, email: "", name: "", phone: "" };
+  return result ?? { needsQuote: false, email: "", name: "", phone: "" };
 }
 
 // ---------- 報價草稿 ----------
@@ -432,13 +452,14 @@ export async function generateMockupFollowup(params: {
     : `買斷 NT$${buyoutPrice}`;
 
   if (!hasGeminiKey()) {
-    return `這是《${artworkName}》掛在您空間裡的模擬效果,喜歡這樣的氛圍嗎?這件作品目前${priceLine},想直接下單的話可以到藝術典藏頁加入購物車,或是告訴我您的需求,我們可以為您準備正式報價單。`;
+    return `這是《${artworkName}》掛在您空間裡的模擬效果,喜歡這樣的氛圍嗎?這件作品目前${priceLine},喜歡的話可以直接到藝術典藏頁加入購物車,選擇月租或買斷都很方便。`;
   }
 
   const result = await callJSON<{ text: string }>(
     `你是「${company.name}」的線上客服顧問,剛為客戶生成了一張擺放模擬圖(把作品合成進客戶自己居家空間的照片)。
 用溫暖克制、專業的繁體中文語氣寫 2~4 句接續回覆:先詢問客戶對這個擺放效果的感覺,接著自然帶出這件作品的公開標價「${priceLine}」,
-最後詢問客戶想直接下單,還是需要我們準備一份正式報價單。絕對不可以自行估算或提及公開標價以外的金額,也不要編造任何規格。`,
+最後引導客戶直接到藝術典藏頁把這件作品加入購物車、選擇月租或買斷下單。這件作品是商城現貨,絕對不要提及報價單或詢問是否需要報價,
+也絕對不可以自行估算或提及公開標價以外的金額,也不要編造任何規格。`,
     `作品名稱:《${artworkName}》`,
     {
       type: "object",
@@ -450,35 +471,41 @@ export async function generateMockupFollowup(params: {
 
   return (
     result?.text ??
-    `這是《${artworkName}》掛在您空間裡的模擬效果,喜歡這樣的氛圍嗎?這件作品目前${priceLine},想直接下單或需要正式報價單都歡迎告訴我。`
+    `這是《${artworkName}》掛在您空間裡的模擬效果,喜歡這樣的氛圍嗎?這件作品目前${priceLine},喜歡的話可以直接到藝術典藏頁加入購物車,選擇月租或買斷都很方便。`
   );
 }
 
 // ---------- 規則式 fallback 回覆(無 API key 時) ----------
 export function fallbackReply(messages: ChatMessage[], company: CompanyProfile) {
-  const last = messages.filter((m) => m.role === "user").at(-1)?.content ?? "";
+  const userMessages = messages.filter((m) => m.role === "user");
+  const last = userMessages.at(-1)?.content ?? "";
   const email = last.match(EMAIL_RE)?.[0];
+  // 客製意圖看整段對話(不只最後一則),讓「先聊客製、後補 email」這種常見兩輪流程仍能命中。
+  const customIntent = userMessages.some((m) => CUSTOM_KEYWORDS.test(m.content));
 
-  if (email) {
+  if (email && customIntent) {
     return `收到!我們會把報價單寄到 ${email},專人確認後就會發出,再麻煩留意信箱。如有其他需求也歡迎直接留言。`;
   }
-  if (QUOTE_KEYWORDS.test(last)) {
-    return `了解您的需求!我們會為您準備一份正式報價單。方便留下您的 email 嗎?專人確認後就會把報價單寄給您。`;
+  if (customIntent) {
+    return `了解您的客製需求!我們會為您準備一份正式報價單。方便留下您的 email 嗎?專人確認後就會把報價單寄給您。`;
   }
   if (/掛|擺放|效果|感覺如何|適合我家|我家|空間感|客廳|書房/.test(last)) {
     return `想知道掛起來的感覺最直接了!${MOCKUP_ENTRY_HINT}。`;
   }
   if (/作品|典藏|畫作|租賃|買斷|月租/.test(last)) {
-    return `我們的畫作典藏都在「藝術典藏」頁面,每件作品皆可選擇月租或買斷。看到喜歡的直接加入購物車就能結帳;想先看看掛在家裡的感覺,${MOCKUP_ENTRY_HINT}。`;
+    return `我們的畫作典藏都在「藝術典藏」頁面,每件作品皆可選擇月租或買斷,都是公開標價。看到喜歡的直接加入購物車就能結帳;想先看看掛在家裡的感覺,${MOCKUP_ENTRY_HINT}。`;
   }
   if (/旅程|旅行|行程/.test(last)) {
-    return `私人旅程會依您鍾愛的畫作靈感量身策劃,詳情在「私人旅程」頁面。若想完全客製,留下 email 我們會請專屬顧問與您聯繫。`;
+    return `我們的私人旅程都在「私人旅程」頁面,每個行程都是公開標價,看到喜歡的直接報名即可。若想完全客製屬於您的行程,留下 email 我們會請專屬顧問與您聯繫。`;
   }
   if (/會員|點數|入會/.test(last)) {
     return `小時光設有緻銀、璀金、典藏三級會員,消費、參訪、租賃皆可累點,可兌換旅程與典藏折扣。歡迎到「會員沙龍」頁面了解,或直接預約參訪申請入會。`;
   }
   if (/運送|安裝|出貨|物流|多久/.test(last)) {
     return `作品租賃或買斷皆含裝裱、運送與到府安裝,詳細時程會在訂單頁面更新。您也可以留下 email,我們會主動通知您。`;
+  }
+  if (QUOTE_KEYWORDS.test(last)) {
+    return `商城裡的作品、旅程與會員方案都是公開標價,歡迎直接到頁面上選購;如果是想客製一份專屬的畫作或旅程,留下 email 我們會為您準備正式報價單。`;
   }
   return `您好,歡迎來到 ${company.name}!想了解藝術典藏、租賃買斷、私人旅程或會員制度,都可以直接跟我說。看到喜歡的作品,${MOCKUP_ENTRY_HINT};也歡迎預約參訪,或留下 email 讓我們主動與您聯繫。`;
 }

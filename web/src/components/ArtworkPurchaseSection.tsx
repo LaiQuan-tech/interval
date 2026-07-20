@@ -61,7 +61,7 @@ export default function ArtworkPurchaseSection({ product }: { product: Product }
       >
         先看看掛在我家的樣子 →
       </button>
-      <p className="lm-caption mt-2 text-[11px]">上傳照片或用示範空間,30 秒生成</p>
+      <p className="lm-caption mt-2 text-[11px]">上傳照片或用示範空間，30 秒生成</p>
 
       <RoomMockupFlyout
         open={mockupOpen}

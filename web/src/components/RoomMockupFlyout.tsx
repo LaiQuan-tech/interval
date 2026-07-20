@@ -194,7 +194,7 @@ export default function RoomMockupFlyout({
 
           {step === "pick" && (
             <div className="px-6 py-5">
-              <p className="mb-4 text-sm text-ink-soft">上傳照片或用示範空間,30 秒生成</p>
+              <p className="mb-4 text-sm text-ink-soft">上傳照片或用示範空間，30 秒生成</p>
               {error && <p className="mb-3 text-xs text-danger">{error}</p>}
               <div className="grid grid-cols-2 gap-3">
                 {DEMO_ROOMS.map((room) => (

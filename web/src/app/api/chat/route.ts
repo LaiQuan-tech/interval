@@ -105,9 +105,21 @@ export async function POST(req: NextRequest) {
       try {
         if (hasGeminiKey()) {
           const system = buildSalesSystem(company, rateCard, productSummary);
-          for await (const delta of streamChatReply(system, messages)) {
-            assistantText += delta;
-            push({ type: "text", text: delta });
+          // gemma-4 思考吃 token 預算的極端情況下,串流會「正常結束但正文為空」
+          // (finishReason=MAX_TOKENS,不拋錯、進不了 catch)——空回覆重試一次;
+          // 重試安全:第一輪全空代表客戶端還沒收到任何字。再空就退規則式回覆。
+          for (let attempt = 0; attempt < 2 && !assistantText.trim(); attempt++) {
+            for await (const delta of streamChatReply(system, messages)) {
+              assistantText += delta;
+              push({ type: "text", text: delta });
+            }
+            if (!assistantText.trim()) {
+              console.error(`[chat] empty AI reply (attempt ${attempt + 1})`);
+            }
+          }
+          if (!assistantText.trim()) {
+            assistantText = fallbackReply(messages, company);
+            push({ type: "text", text: assistantText });
           }
         } else {
           assistantText = fallbackReply(messages, company);
@@ -120,7 +132,10 @@ export async function POST(req: NextRequest) {
           assistantText = fallbackReply(messages, company);
           push({ type: "text", text: assistantText });
         } else {
-          push({ type: "text", text: "\n\n(回覆似乎被中斷了,歡迎留下 email,由專人與您聯繫。)" });
+          // 中斷提示也要併入 assistantText,讓落庫內容與客戶實際看到的一致
+          const notice = "\n\n(回覆似乎被中斷了,歡迎留下 email,由專人與您聯繫。)";
+          assistantText += notice;
+          push({ type: "text", text: notice });
         }
       }
 

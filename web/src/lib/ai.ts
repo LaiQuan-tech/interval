@@ -107,7 +107,11 @@ export async function* streamChatReply(
     body: JSON.stringify({
       system_instruction: { parts: [{ text: system }] },
       contents: toGeminiContents(messages),
-      generationConfig: { maxOutputTokens: 600 },
+      // gemma-4 的思考 token 計入 maxOutputTokens(實測 2026-07-21 思考常態 550~700 token,
+      // 且不支援 thinkingConfig 壓思考預算):上限 600 時思考吃光預算,正文變空或中途截斷,
+      // 並以 finishReason=MAX_TOKENS「正常結束」不拋錯。2048 實測 6/6 完整回覆。
+      // 注意 JSON 模式(callJSON)實測不產思考 token,不受此限。
+      generationConfig: { maxOutputTokens: 2048 },
     }),
   });
 

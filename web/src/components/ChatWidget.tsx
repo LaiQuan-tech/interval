@@ -49,19 +49,20 @@ async function resizeToJpeg(file: File): Promise<PendingImage> {
   }
 }
 
-// 送後端的歷史:圖片訊息換成純文字表徵(Gemini 只吃文字歷史),但保留 imageUrl 供後台紀錄
+// 送後端的歷史:圖片訊息換成純文字表徵(Gemini 只吃文字歷史),但保留 imageUrl/imagePath 供後台紀錄
+// 注意:/api/chat 已改為伺服器權威 append,DB 寫入不再依賴這份歷史——這裡保留欄位只是型別一致。
 function toApiHistory(messages: WidgetMessage[]): ChatMessage[] {
   return messages
     .filter((m) => m.kind !== "quote-card")
     .map((m) => {
-      if (!m.imageUrl) return { role: m.role, content: m.content };
+      if (!m.imageUrl && !m.imagePath) return { role: m.role, content: m.content };
       const content =
         m.role === "user"
           ? "(上傳了空間照片)"
           : `(已提供擺放模擬圖${m.artworkName ? `:${m.artworkName}` : ""})${
               m.content ? ` ${m.content}` : ""
             }`;
-      return { role: m.role, content, imageUrl: m.imageUrl };
+      return { role: m.role, content, imageUrl: m.imageUrl, imagePath: m.imagePath };
     });
 }
 

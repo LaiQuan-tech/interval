@@ -139,7 +139,13 @@ export type Quote = {
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
-  imageUrl?: string; // 居家擺放模擬:客人空間照 / AI 合成模擬圖的公開網址
+  // 居家擺放模擬:客人空間照 / AI 合成模擬圖。
+  // 新資料(2026-07-20 起)一律存 imagePath——chat-uploads bucket 內的路徑(如 rooms/<uuid>.jpg),
+  // 渲染時才用 signChatImage 即時簽出短期網址(見 lib/chat-images.ts)。
+  imagePath?: string;
+  // 舊資料相容用:2026-07-20 之前寫入的紀錄只有這個公開網址欄位(bucket 轉私密後已失效,
+  // 靠 pathFromLegacyUrl 反推路徑再簽名)。新程式碼不應再寫入此欄位,只讀取。
+  imageUrl?: string;
 };
 
 export type RateCardItem = {

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { generateMockupFollowup, generateRoomMockup } from "@/lib/ai";
 import { watermarkMockup } from "@/lib/watermark";
 import { getCompanyProfile } from "@/lib/settings";
+import { signChatImage } from "@/lib/chat-images";
 import type { ChatMessage } from "@/lib/types";
 
 export const maxDuration = 60;
@@ -120,7 +121,7 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
   const existingMessages = (existingLog?.messages ?? []) as ChatMessage[];
   const mockupCount = existingMessages.filter(
-    (m) => m.role === "assistant" && Boolean(m.imageUrl)
+    (m) => m.role === "assistant" && Boolean(m.imageUrl || m.imagePath)
   ).length;
   if (mockupCount >= MAX_MOCKUPS_PER_SESSION) {
     return friendly(
@@ -144,7 +145,7 @@ export async function POST(req: NextRequest) {
     return friendly("模擬圖生成失敗,可能是網路忙碌,請稍後再試一次", 502);
   }
 
-  // 上傳原圖與模擬圖(路徑用 uuid,bucket 公開讀但不可列舉)
+  // 上傳原圖與模擬圖(路徑用 uuid;bucket 已轉私密,讀取一律走簽名網址)
   const uuid =
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
@@ -168,8 +169,12 @@ export async function POST(req: NextRequest) {
     return friendly("圖片上傳失敗,請稍後再試一次", 502);
   }
 
-  const roomUrl = supabase.storage.from("chat-uploads").getPublicUrl(roomPath).data.publicUrl;
-  const mockupUrl = supabase.storage.from("chat-uploads").getPublicUrl(mockupPath).data.publicUrl;
+  // bucket 已轉私密,不能再用 getPublicUrl——即時簽出短期網址讓客戶當下看得到圖。
+  // 簽名失敗時回傳 null 是可接受的降級(訊息內容/導購話術仍照常回覆),不讓整支請求爆掉。
+  const [roomUrl, mockupUrl] = await Promise.all([
+    signChatImage(roomPath),
+    signChatImage(mockupPath),
+  ]);
 
   // 接續導購話術
   const company = await getCompanyProfile();
@@ -186,11 +191,11 @@ export async function POST(req: NextRequest) {
     followupText = `這是《${product.name}》掛在您空間裡的模擬效果,喜歡這樣的氛圍嗎?想直接下單或需要正式報價單都歡迎告訴我。`;
   }
 
-  // 落庫:append 兩則訊息進 ai_chat_logs.messages
+  // 落庫:append 兩則訊息進 ai_chat_logs.messages(存路徑不存網址,避免簽名網址過期後破圖)
   const nextMessages: ChatMessage[] = [
     ...existingMessages,
-    { role: "user", content: "(上傳了空間照片)", imageUrl: roomUrl },
-    { role: "assistant", content: followupText, imageUrl: mockupUrl },
+    { role: "user", content: "(上傳了空間照片)", imagePath: roomPath },
+    { role: "assistant", content: followupText, imagePath: mockupPath },
   ];
   try {
     await supabase.from("ai_chat_logs").upsert({

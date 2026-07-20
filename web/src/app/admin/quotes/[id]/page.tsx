@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveChatImageUrl } from "@/lib/chat-images";
 import { formatDateTime, QUOTE_STATUS_LABEL } from "@/lib/format";
 import QuoteEditor from "@/components/admin/QuoteEditor";
 import type { ChatMessage, Quote } from "@/lib/types";
@@ -29,6 +30,14 @@ export default async function AdminQuoteDetailPage({
       .maybeSingle();
     transcript = (log?.messages ?? []) as ChatMessage[];
   }
+  // 併發解析每則訊息的圖片簽名網址(新資料 imagePath / 舊資料 imageUrl 反推),
+  // 避免逐則 await 在訊息多時拖慢頁面。簽名失敗回 null,渲染端要能容忍。
+  const transcriptWithImages = await Promise.all(
+    transcript.map(async (m) => ({
+      ...m,
+      resolvedUrl: m.imagePath || m.imageUrl ? await resolveChatImageUrl(m) : null,
+    }))
+  );
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -58,20 +67,42 @@ export default async function AdminQuoteDetailPage({
 
       <QuoteEditor quote={typedQuote} />
 
-      {transcript.length > 0 && (
+      {transcriptWithImages.length > 0 && (
         <section className="iv-card">
           <h3 className="mb-3 font-bold">AI 對話紀錄</h3>
           <div className="max-h-80 space-y-2 overflow-y-auto text-sm">
-            {transcript.map((m, i) => (
+            {transcriptWithImages.map((m, i) => (
               <div
                 key={i}
-                className={`rounded-xl px-3 py-2 ${
+                className={`max-w-full break-words rounded-xl px-3 py-2 ${
                   m.role === "user" ? "bg-accent-soft" : "bg-paper"
                 }`}
               >
                 <span className="mr-2 text-xs font-semibold text-ink-soft">
                   {m.role === "user" ? "客戶" : "AI"}
                 </span>
+                {(m.imagePath || m.imageUrl) &&
+                  (m.resolvedUrl ? (
+                    <a
+                      href={m.resolvedUrl}
+                      target="_blank"
+                      rel="noopener"
+                      className="mb-2 block max-w-xs"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={m.resolvedUrl}
+                        alt={
+                          m.role === "user"
+                            ? "客戶上傳的空間照片"
+                            : "AI 擺放模擬圖"
+                        }
+                        className="w-full rounded-xl"
+                      />
+                    </a>
+                  ) : (
+                    <div className="mb-2 text-xs text-ink-soft">圖片已無法載入</div>
+                  ))}
                 <span className="whitespace-pre-wrap">{m.content}</span>
               </div>
             ))}

@@ -83,7 +83,10 @@ export default function AdminBottomNav({
           </div>
         )}
 
-        <nav aria-label="底部導覽" className="flex border-t border-line bg-paper">
+        <nav
+          aria-label="底部導覽"
+          className="flex border-t border-line bg-paper pb-[env(safe-area-inset-bottom)]"
+        >
           {primary.map((item) => {
             const active = isAdminNavActive(pathname, item.href);
             const count = item.badge ? badges[item.badge] : 0;

@@ -48,7 +48,7 @@ export default function ChatWidget() {
   const [messages, setMessages] = useState<WidgetMessage[]>([
     {
       role: "assistant",
-      content: `您好，我是小時光的智慧客服顧問！想了解藝術典藏、租賃買斷、私人旅程或會員制度，都可以直接問我。${MOCKUP_ENTRY_HINT}`,
+      content: `您好，我是好日子的智慧客服顧問！想了解藝術典藏、租賃買斷、私人旅程或會員制度，都可以直接問我。${MOCKUP_ENTRY_HINT}`,
     },
   ]);
   const [input, setInput] = useState("");
@@ -269,7 +269,7 @@ export default function ChatWidget() {
               小
             </div>
             <div>
-              <div className="text-sm font-semibold">小時光智慧客服</div>
+              <div className="text-sm font-semibold">好日子智慧客服</div>
               <div className="text-xs text-cream-soft">AI 顧問 · 擺放模擬 · 自動報價</div>
             </div>
           </div>

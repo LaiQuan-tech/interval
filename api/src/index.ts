@@ -1,4 +1,4 @@
-// little-moments-api — 部署於 Railway 的背景服務(小時光 Little Moments)
+// little-moments-api — 部署於 Railway 的背景服務(好日子 Good Days)
 // 職責:
 //  1. /health 健康檢查
 //  2. 內建排程:報價追蹤/過期、訂單提醒、點數到期沖銷(每小時檢查一次,單發不重複)

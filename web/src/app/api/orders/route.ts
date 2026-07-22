@@ -421,7 +421,7 @@ export async function POST(req: NextRequest) {
 
   await sendMail({
     to: order.contact_email,
-    subject: `【小時光】訂單成立 ${order.order_no}`,
+    subject: `【好日子】訂單成立 ${order.order_no}`,
     html: emailShell(
       `訂單 ${order.order_no} 已成立`,
       `<p>${order.contact_name} 您好,感謝您的訂購!</p>

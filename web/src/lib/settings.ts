@@ -40,7 +40,7 @@ export async function getSetting<T>(key: string, fallback: T): Promise<T> {
 
 export async function getCompanyProfile(): Promise<CompanyProfile> {
   return getSetting<CompanyProfile>("company_profile", {
-    name: "小時光 Little Moments",
+    name: "好日子 Good Days",
     tagline: "為懂得生活的人，典藏值得停留的時光",
     email: "",
     phone: "",

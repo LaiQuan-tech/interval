@@ -18,7 +18,7 @@ export default function AdminSidebar({
     // 高度由 Task 5 的後台 layout(flex flex-1 橫向容器)撐滿;nav 的 overflow-y-auto 依賴此契約
     <aside className="hidden w-55 shrink-0 flex-col border-r border-line bg-panel lg:flex">
       <div className="border-b border-line px-5 py-4">
-        <div className="font-serif text-[17px] text-ink">小時光</div>
+        <div className="font-serif text-[17px] text-ink">好日子</div>
         <div className="lm-caption text-[11px]">後台管理</div>
       </div>
 

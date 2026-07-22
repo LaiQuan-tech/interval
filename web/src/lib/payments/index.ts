@@ -7,7 +7,7 @@ export type PaymentOrder = {
   contact_name: string;
   contact_email: string;
   public_token: string;
-  /** 顯示在 PChomePay 收銀台的品項名稱;未提供時退化為「小時光訂單 ${order_no}」 */
+  /** 顯示在 PChomePay 收銀台的品項名稱;未提供時退化為「好日子訂單 ${order_no}」 */
   itemName?: string;
 };
 
@@ -40,7 +40,7 @@ export async function createPayment(
     orderNo: order.order_no,
     amount: order.total,
     buyerEmail: order.contact_email,
-    itemName: order.itemName ?? `小時光訂單 ${order.order_no}`,
+    itemName: order.itemName ?? `好日子訂單 ${order.order_no}`,
     returnUrl: pchomepayReturnUrl(order.order_no),
     // notify_url 帶上伺服器產生的密鑰(?k=),webhook route 進任何業務邏輯前先驗證這把
     // 密鑰 —— 沒有它,任何人都能對 webhook 端點偽造 order_paid 通知(見該檔開頭註解)。

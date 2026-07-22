@@ -54,7 +54,7 @@ export async function markOrderPaid(
   if (order.contact_email) {
     await sendMail({
       to: order.contact_email,
-      subject: `【小時光】已收到您的款項 ${order.order_no}`,
+      subject: `【好日子】已收到您的款項 ${order.order_no}`,
       html: emailShell(
         "已收到您的款項",
         `<p>${order.contact_name} 您好,</p><p>我們已確認收到款項,將盡快為您安排出貨。</p>

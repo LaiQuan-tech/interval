@@ -156,7 +156,7 @@ export type RateCardItem = {
   note?: string;
 };
 
-// ---------- 小時光:會員等級 / 點數 / 預約參訪 ----------
+// ---------- 好日子:會員等級 / 點數 / 預約參訪 ----------
 export type MembershipTier = {
   slug: string;
   name: string;

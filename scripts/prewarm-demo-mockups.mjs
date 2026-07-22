@@ -193,7 +193,7 @@ async function watermarkMockup(imageBuffer) {
   const fontSize = Math.max(20, Math.round(width * 0.024));
   const paddingX = Math.round(fontSize * 1.1);
   const paddingY = Math.round(fontSize * 1.4);
-  const text = "小時光 Little Moments · 預覽";
+  const text = "好日子 Good Days · 預覽";
 
   const svg = `
     <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">

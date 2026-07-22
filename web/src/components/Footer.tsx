@@ -7,7 +7,7 @@ export default function Footer() {
       <div className="lm-container grid grid-cols-2 gap-x-8 gap-y-10 py-16 sm:grid-cols-4 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:gap-10">
         <div className="col-span-2 sm:col-span-4 lg:col-span-1">
           <div className="font-serif text-2xl font-semibold tracking-[0.2em] text-ink-deep">
-            小時光
+            好日子
           </div>
           <p className="mt-4 max-w-70 text-[13px] leading-[1.9] text-muted">
             線下書店門市 × 線上藝術與旅程。收藏一幅畫，啟程一段旅行。
@@ -39,12 +39,12 @@ export default function Footer() {
             <br />
             週二 – 週日 11:00–20:00
             <br />
-            salon@littlemoments.tw
+            salon@goodays.tw
           </div>
         </div>
       </div>
       <div className="lm-container flex flex-col gap-3 pb-10 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
-        <div className="lm-caption text-[12px]">© {new Date().getFullYear()} 小時光 · Little Moments</div>
+        <div className="lm-caption text-[12px]">© {new Date().getFullYear()} 好日子 · Good Days</div>
         <div className="flex justify-center gap-6 text-[12.5px] text-muted-2 sm:justify-end">
           <Link href="#">隱私政策</Link>
           <Link href="#">服務條款</Link>

@@ -44,7 +44,7 @@ export default async function MembershipPage() {
             會員沙龍
           </h1>
           <p className="mx-auto max-w-130 text-[15.5px] leading-[2] text-cream-soft">
-            加入小時光，累積屬於您的點數。消費、參訪、租賃皆可累點，兌換私人旅程與藝術典藏折扣。
+            加入好日子，累積屬於您的點數。消費、參訪、租賃皆可累點，兌換私人旅程與藝術典藏折扣。
           </p>
         </div>
       </div>

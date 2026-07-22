@@ -143,7 +143,7 @@ export async function updateOrderStatus(orderId: string, next: string) {
   if (mail && order.contact_email) {
     await sendMail({
       to: order.contact_email,
-      subject: `【小時光】${mail.subject} ${order.order_no}`,
+      subject: `【好日子】${mail.subject} ${order.order_no}`,
       html: emailShell(
         `${mail.subject}`,
         `<p>${order.contact_name} 您好,</p><p>${mail.body}</p>
@@ -266,11 +266,11 @@ export async function updateBookingStatus(bookingId: string, next: string) {
   if (next === "confirmed" && booking.email) {
     await sendMail({
       to: booking.email,
-      subject: `【小時光】您的預約已確認`,
+      subject: `【好日子】您的預約已確認`,
       html: emailShell(
         "預約已確認",
         `<p>${booking.name} 您好,您預約的參訪已確認${booking.visit_date ? `,日期為 ${booking.visit_date}` : ""}。</p>
-         <p>期待與您在小時光書店相會,若時間需調整歡迎直接回覆此信或致電門市。</p>`
+         <p>期待與您在好日子書店相會,若時間需調整歡迎直接回覆此信或致電門市。</p>`
       ),
     });
   }

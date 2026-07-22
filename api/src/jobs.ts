@@ -10,7 +10,7 @@ function db() {
 
 async function sendEmail(to: string, subject: string, html: string) {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM ?? "小時光 Little Moments <onboarding@resend.dev>";
+  const from = process.env.RESEND_FROM ?? "好日子 Good Days <onboarding@resend.dev>";
   if (!apiKey) return false;
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -57,7 +57,7 @@ export async function runFollowupJobs() {
     if (q.note?.includes("[reminded]")) continue;
     const ok = await sendEmail(
       q.contact_email,
-      `【小時光】報價單 ${q.quote_no} 提醒`,
+      `【好日子】報價單 ${q.quote_no} 提醒`,
       `<p>${q.contact_name || "您好"},提醒您先前的報價單仍在有效期內:</p>
        <p><a href="${SITE()}/quote/${q.public_token}">查看報價單 ${q.quote_no}</a></p>`
     );
@@ -101,7 +101,7 @@ export async function runFollowupJobs() {
         : "";
     const ok = await sendEmail(
       o.contact_email,
-      `【小時光】訂單 ${o.order_no} 付款提醒`,
+      `【好日子】訂單 ${o.order_no} 付款提醒`,
       `<p>${o.contact_name || "您好"},您的訂單尚未完成付款:</p>
        ${deadlineText}
        <p><a href="${SITE()}/orders/${o.public_token}">查看訂單 ${o.order_no}</a></p>`

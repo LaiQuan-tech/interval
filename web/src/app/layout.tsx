@@ -3,11 +3,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "小時光 Little Moments — 為懂得生活的人，典藏值得停留的時光",
-    template: "%s | 小時光 Little Moments",
+    default: "好日子 Good Days — 為懂得生活的人，典藏值得停留的時光",
+    template: "%s | 好日子 Good Days",
   },
   description:
-    "小時光 Little Moments — 獨家 AI 藝術畫作租賃與買斷、量身訂製的私人旅程，以及三級會員點數禮遇。線下書店門市 × 線上藝術與旅程。",
+    "好日子 Good Days — 獨家 AI 藝術畫作租賃與買斷、量身訂製的私人旅程，以及三級會員點數禮遇。線下書店門市 × 線上藝術與旅程。",
 };
 
 export const viewport: Viewport = {

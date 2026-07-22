@@ -30,7 +30,7 @@ export default async function Header() {
           href="/"
           className="shrink-0 font-serif text-[22px] font-semibold tracking-[0.2em] text-ink-deep sm:text-[25px]"
         >
-          小時光
+          好日子
         </Link>
 
         <nav className="hidden items-center gap-8 text-sm tracking-[0.08em] lg:flex">

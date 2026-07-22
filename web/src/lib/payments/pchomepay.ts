@@ -98,7 +98,7 @@ export async function createPchomePayment(
 ): Promise<{ paymentUrl: string }> {
   if (!Number.isFinite(params.amount) || params.amount < 31) {
     // 防呆:PChomePay 沙盒實測 amount<=30 會被 API 拒絕("amount must be greater than
-    // 30")。小時光現有商品(作品最低 8,800 / 會員最低 3,600 / 旅程 12 萬+)都遠高於此,
+    // 30")。好日子現有商品(作品最低 8,800 / 會員最低 3,600 / 旅程 12 萬+)都遠高於此,
     // 這裡先擋掉是為了未來萬一新增低價商品時不要直接炸在 gateway 呼叫上。
     throw new Error(`PChomePay 金額需大於 30 元(收到 ${params.amount})`);
   }

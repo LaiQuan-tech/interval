@@ -16,11 +16,11 @@ export default async function BookingPage() {
             預約參訪
           </h1>
           <p className="mb-10 max-w-110 text-[15.5px] leading-[2.05] text-ink-soft">
-            歡迎親臨小時光書店門市，在靜謐的空間中鑑賞畫作、洽談租賃買斷或規劃您的私人旅程。我們將為您保留專屬時段。
+            歡迎親臨好日子書店門市，在靜謐的空間中鑑賞畫作、洽談租賃買斷或規劃您的私人旅程。我們將為您保留專屬時段。
           </p>
           <Placeholder
             src="/scenes/bookstore-interior.jpg"
-            alt="小時光書店門市空間"
+            alt="好日子書店門市空間"
             label="Bookstore interior — 門市空間"
             sizes="(max-width: 1024px) 100vw, 45vw"
             className="mb-8 h-70"
@@ -29,7 +29,7 @@ export default async function BookingPage() {
             <div>
               <span className="lm-caption text-[12px]">Address</span>
               <br />
-              {company.address ?? "台北市大安區　小時光書店"}
+              {company.address ?? "台北市大安區　好日子書店"}
             </div>
             <div>
               <span className="lm-caption text-[12px]">Hours</span>
@@ -40,7 +40,7 @@ export default async function BookingPage() {
               <span className="lm-caption text-[12px]">Enquiry</span>
               <br />
               {company.phone ? `${company.phone} · ` : ""}
-              {company.email || "salon@littlemoments.tw"}
+              {company.email || "salon@goodays.tw"}
             </div>
           </div>
         </div>

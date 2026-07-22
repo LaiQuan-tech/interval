@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import LocaleSwitcher from "@/components/LocaleSwitcher";
 import { NAV_ITEMS } from "@/components/NavLinks";
 
 export default function MobileNav({
@@ -85,6 +86,9 @@ export default function MobileNav({
                 後台管理
               </Link>
             )}
+            <div className="flex justify-center border-t border-line/60 py-4">
+              <LocaleSwitcher />
+            </div>
           </nav>
         </div>
       )}

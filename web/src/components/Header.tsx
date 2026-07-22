@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import CartLink from "@/components/CartLink";
+import LocaleSwitcher from "@/components/LocaleSwitcher";
 import MobileNav from "@/components/MobileNav";
 import NavLinks from "@/components/NavLinks";
 
@@ -39,6 +40,7 @@ export default async function Header() {
 
         <div className="flex items-center gap-2 sm:gap-3">
           <CartLink />
+          <LocaleSwitcher className="hidden lg:flex" />
           <Link
             href="/booking"
             className="hidden whitespace-nowrap border border-ink-deep px-5 py-2 font-cormorant text-sm tracking-[0.2em] text-ink-deep lg:inline-flex"

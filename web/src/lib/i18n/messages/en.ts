@@ -428,12 +428,51 @@ const en: Messages = {
     submitted: "Booking received — we'll be in touch soon ✓",
     submitting: "Submitting…",
     submit: "Submit Booking",
+    pageDesc:
+      "Welcome to the Good Days bookstore salon — appreciate the artworks in a tranquil space, discuss rental or purchase, or plan your private journey. We'll reserve a dedicated time slot just for you.",
+    addressFallback: "Da'an District, Taipei — Good Days Bookstore",
+    hoursFallback: "Tue – Sun 11:00 – 20:00",
+    formTitle: "Booking Form",
     errors: {
       missing: "Please fill in your name and email.",
       emailFormat: "Please enter a valid email address.",
       notReady: "The system isn't fully set up yet — please try again later.",
       submitFailed: "Couldn't submit your booking — please try again later.",
     },
+  },
+  login: {
+    title: "Member Login",
+    desc: "Sign in to track your orders, check out faster, and view your personal quotes and points.",
+  },
+  quoteInfo: {
+    metaTitle: "Custom Quote / AI Advisor",
+    eyebrow: "Bespoke Enquiry",
+    title: "Custom Needs? Let Our AI Advisor Prepare Your Quote",
+    desc: "No forms to fill out, no waiting for a callback. Just chat with our AI concierge about what you need — your quote will be prepared automatically and emailed to you, ready to accept with one click.",
+    steps: [
+      {
+        title: "Tell Our AI Advisor What You Need",
+        desc: "Open the concierge chat in the bottom right and describe the artwork, journey, or corporate space plan you'd like customized.",
+      },
+      {
+        title: "Leave Your Email",
+        desc: "The AI will help organize your needs — just leave your email and the system will prepare a quote automatically.",
+      },
+      {
+        title: "Confirmed by Our Team, Then Sent",
+        desc: "Our team confirms the items and pricing, then sends the quote directly to your inbox.",
+      },
+      {
+        title: "Accept With One Click, Order Created Automatically",
+        desc: "On the quote page, tap “Accept Quote” — your order is created automatically and payment details are sent right away.",
+      },
+    ],
+    footerNote: "Quotes are reviewed and sent by our team — the AI never commits to pricing on its own.",
+  },
+  notFound: {
+    title: "Page Not Found",
+    desc: "This link may be broken, or the content may have been removed.",
+    backHome: "Back to Home",
   },
 };
 

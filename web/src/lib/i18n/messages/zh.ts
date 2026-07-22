@@ -418,12 +418,50 @@ const zh = {
     submitted: "已收到您的預約，我們將盡快聯繫 ✓",
     submitting: "送出中…",
     submit: "送出預約",
+    pageDesc: "歡迎親臨好日子書店門市，在靜謐的空間中鑑賞畫作、洽談租賃買斷或規劃您的私人旅程。我們將為您保留專屬時段。",
+    addressFallback: "台北市大安區　好日子書店",
+    hoursFallback: "週二至週日 11:00 – 20:00",
+    formTitle: "預約表單",
     errors: {
       missing: "請填寫姓名與 Email",
       emailFormat: "Email 格式不正確",
       notReady: "系統尚未完成設定,請稍後再試",
       submitFailed: "預約送出失敗,請稍後再試",
     },
+  },
+  login: {
+    title: "會員登入",
+    desc: "登入後可追蹤訂單、快速結帳、查看專屬報價與點數",
+  },
+  quoteInfo: {
+    metaTitle: "客製報價 / AI 顧問",
+    eyebrow: "Bespoke Enquiry",
+    title: "客製需求，交給 AI 顧問幫你準備報價",
+    desc: "不用填表單、不用等回電。跟智慧客服聊聊你的需求，報價單自動準備好寄到信箱，按一下就能成立訂單。",
+    steps: [
+      {
+        title: "告訴 AI 顧問你的需求",
+        desc: "打開右下角智慧客服，說明想客製的畫作、旅程規劃或企業空間方案。",
+      },
+      {
+        title: "留下 Email",
+        desc: "AI 會協助整理需求，只要留下 email，系統就會自動準備報價單。",
+      },
+      {
+        title: "專人確認、報價寄出",
+        desc: "我們的同事會確認品項與價格，報價單直接寄到你的信箱。",
+      },
+      {
+        title: "一鍵接受、自動成單",
+        desc: "在報價單頁面按「接受報價」，訂單自動成立，付款資訊同步寄出。",
+      },
+    ],
+    footerNote: "報價由專人確認後寄出，AI 不會自行承諾價格。",
+  },
+  notFound: {
+    title: "找不到這個頁面",
+    desc: "連結可能已失效或內容已移除。",
+    backHome: "回到首頁",
   },
 };
 

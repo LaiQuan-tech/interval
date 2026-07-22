@@ -1,10 +1,16 @@
+import type { Metadata } from "next";
 import Placeholder from "@/components/Placeholder";
 import BookingForm from "@/components/BookingForm";
 import { getCompanyProfile } from "@/lib/settings";
+import { getLocale, getMessages } from "@/lib/i18n/server";
 
-export const metadata = { title: "預約參訪" };
+export async function generateMetadata(): Promise<Metadata> {
+  const messages = getMessages(await getLocale());
+  return { title: messages.nav.booking };
+}
 
 export default async function BookingPage() {
+  const messages = getMessages(await getLocale());
   const company = await getCompanyProfile();
 
   return (
@@ -13,10 +19,10 @@ export default async function BookingPage() {
         <div>
           <div className="lm-eyebrow text-[20px]">Book a private visit</div>
           <h1 className="mt-3.5 mb-4.5 font-serif text-[27px] font-normal tracking-[0.04em] text-ink sm:text-[48px]">
-            預約參訪
+            {messages.nav.booking}
           </h1>
           <p className="mb-10 max-w-110 text-[15.5px] leading-[2.05] text-ink-soft">
-            歡迎親臨好日子書店門市，在靜謐的空間中鑑賞畫作、洽談租賃買斷或規劃您的私人旅程。我們將為您保留專屬時段。
+            {messages.booking.pageDesc}
           </p>
           <Placeholder
             src="/scenes/bookstore-interior.jpg"
@@ -29,24 +35,24 @@ export default async function BookingPage() {
             <div>
               <span className="lm-caption text-[12px]">Address</span>
               <br />
-              {company.address ?? "台北市大安區　好日子書店"}
+              {company.address ?? messages.booking.addressFallback}
             </div>
             <div>
               <span className="lm-caption text-[12px]">Hours</span>
               <br />
-              {company.hours ?? "週二至週日 11:00 – 20:00"}
+              {company.hours ?? messages.booking.hoursFallback}
             </div>
             <div>
               <span className="lm-caption text-[12px]">Enquiry</span>
               <br />
               {company.phone ? `${company.phone} · ` : ""}
-              {company.email || "salon@goodays.tw"}
+              {company.email || messages.footer.email}
             </div>
           </div>
         </div>
 
         <div className="bg-panel p-6.5 sm:p-13">
-          <h3 className="mb-7.5 font-serif text-[24px] font-medium text-ink">預約表單</h3>
+          <h3 className="mb-7.5 font-serif text-[24px] font-medium text-ink">{messages.booking.formTitle}</h3>
           <BookingForm />
         </div>
       </div>

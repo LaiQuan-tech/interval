@@ -1,13 +1,29 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTWD, formatPoints } from "@/lib/format";
 import Placeholder from "@/components/Placeholder";
 import QuickAddButton from "@/components/QuickAddButton";
 import OpenChatButton from "@/components/OpenChatButton";
+import { getLocale, getMessages } from "@/lib/i18n/server";
 import type { Product } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "私人旅程" };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const messages = getMessages(await getLocale());
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  return {
+    title: messages.journeys.title,
+    description: messages.journeys.metaDescription,
+    alternates: {
+      languages: {
+        "zh-Hant-TW": `${baseUrl}/journeys`,
+        en: `${baseUrl}/en/journeys`,
+      },
+    },
+  };
+}
 
 async function getJourneys(): Promise<Product[]> {
   try {
@@ -25,6 +41,8 @@ async function getJourneys(): Promise<Product[]> {
 }
 
 export default async function JourneysPage() {
+  const locale = await getLocale();
+  const messages = getMessages(locale);
   const journeys = await getJourneys();
 
   return (
@@ -42,10 +60,10 @@ export default async function JourneysPage() {
         <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-b from-ink-deep/10 to-ink-deep/60 px-6 py-10 sm:px-16 sm:py-15">
           <div className="lm-container !px-0">
             <div className="mb-4 font-cormorant text-[19px] italic text-gold-bright sm:text-[21px]">
-              Bespoke Journeys
+              {messages.journeys.eyebrow}
             </div>
             <h1 className="max-w-160 font-serif text-[27px] font-normal tracking-[0.04em] text-cream-text sm:text-[54px]">
-              把一幅畫，延伸成一趟旅行
+              {messages.journeys.heroTitle}
             </h1>
           </div>
         </div>
@@ -53,11 +71,11 @@ export default async function JourneysPage() {
 
       <div className="lm-container py-16 sm:py-20">
         <p className="mb-14 max-w-150 text-[15px] leading-[2.05] text-ink-soft sm:mb-16 sm:text-[16px]">
-          以您鍾愛的畫作靈感為起點，專屬顧問為您量身策劃行程；從私人包車到藝術家工作室拜訪，會員點數皆可折抵體驗費用。
+          {messages.journeys.desc}
         </p>
 
         {journeys.length === 0 ? (
-          <div className="iv-card text-center text-ink-soft">旅程即將上架，敬請期待。</div>
+          <div className="iv-card text-center text-ink-soft">{messages.journeys.emptyState}</div>
         ) : (
           <div className="flex flex-col gap-0.5 bg-line">
             {journeys.map((j) => {
@@ -84,19 +102,21 @@ export default async function JourneysPage() {
                     )}
                   </div>
                   <div className="text-left lg:text-right">
-                    <div className="font-cormorant text-[15px] text-accent">from</div>
+                    <div className="font-cormorant text-[15px] text-accent">{messages.journeys.fromLabel}</div>
                     <div className="font-serif text-[22px] text-ink sm:text-[24px]">
-                      {formatTWD(j.price)}
+                      {formatTWD(j.price, locale)}
                     </div>
                     {j.points_price != null && (
                       <div className="mt-1 text-[12px] text-muted-2">
-                        或 {formatPoints(j.points_price)}
+                        {messages.journeys.orPointsPrefix}{formatPoints(j.points_price, locale)}
                       </div>
                     )}
                     <QuickAddButton
                       product={j}
                       mode="journey"
                       unitPrice={j.price}
+                      label={messages.journeys.addToCart}
+                      addedLabel={messages.journeys.addedToCart}
                       className="mt-3 inline-block text-[12px] tracking-[0.08em] text-accent border-b border-gold pb-0.5"
                     />
                   </div>
@@ -108,10 +128,10 @@ export default async function JourneysPage() {
 
         <div className="mt-14 text-center sm:mt-16">
           <Link href="/booking" className="iv-btn-primary">
-            預約專屬旅程諮詢
+            {messages.journeys.consultCta}
           </Link>
           <div className="mt-8 flex flex-col items-center gap-3">
-            <p className="text-[13.5px] text-muted">想要完全客製？跟 AI 顧問聊聊您的靈感。</p>
+            <p className="text-[13.5px] text-muted">{messages.journeys.customPrompt}</p>
             <OpenChatButton />
           </div>
         </div>

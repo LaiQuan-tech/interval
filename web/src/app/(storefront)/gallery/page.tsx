@@ -1,9 +1,25 @@
+import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 import GalleryGrid from "@/components/GalleryGrid";
+import { getLocale, getMessages } from "@/lib/i18n/server";
 import type { Product } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "藝術典藏" };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const messages = getMessages(await getLocale());
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  return {
+    title: messages.gallery.title,
+    description: messages.gallery.metaDescription,
+    alternates: {
+      languages: {
+        "zh-Hant-TW": `${baseUrl}/gallery`,
+        en: `${baseUrl}/en/gallery`,
+      },
+    },
+  };
+}
 
 async function getArtworks(): Promise<Product[]> {
   try {
@@ -21,17 +37,18 @@ async function getArtworks(): Promise<Product[]> {
 }
 
 export default async function GalleryPage() {
+  const messages = getMessages(await getLocale());
   const works = await getArtworks();
 
   return (
     <div>
       <div className="lm-container pt-16 pb-6 sm:pt-20">
-        <div className="lm-eyebrow text-[20px]">The Collection</div>
+        <div className="lm-eyebrow text-[20px]">{messages.gallery.eyebrow}</div>
         <h1 className="mt-3.5 mb-4 font-serif text-[27px] font-normal tracking-[0.04em] text-ink sm:text-[52px]">
-          藝術典藏
+          {messages.gallery.title}
         </h1>
         <p className="max-w-140 text-[15.5px] leading-[2] text-ink-soft">
-          每一幅 AI 藝術畫作皆為獨家生成、職人裝裱的實體作品。可租賃、可買斷，會員另享折扣。
+          {messages.gallery.desc}
         </p>
       </div>
       <div className="lm-container pb-16 sm:pb-24">

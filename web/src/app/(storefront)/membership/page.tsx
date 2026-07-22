@@ -1,18 +1,30 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTWD } from "@/lib/format";
 import QuickAddButton from "@/components/QuickAddButton";
+import { getLocale, getMessages } from "@/lib/i18n/server";
 import type { MembershipTier, Product } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "會員沙龍" };
 
-const REDEMPTIONS = [
-  { points: "500 pt", desc: "藝術品租賃折抵 NT$500" },
-  { points: "1,200 pt", desc: "門市私人鑑賞午茶席" },
-  { points: "6,400 pt", desc: "京都私人旅程折抵" },
-  { points: "13,400 pt", desc: "托斯卡尼旅程折抵" },
-];
+export async function generateMetadata(): Promise<Metadata> {
+  const messages = getMessages(await getLocale());
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  return {
+    title: messages.membership.title,
+    description: messages.membership.metaDescription,
+    alternates: {
+      languages: {
+        "zh-Hant-TW": `${baseUrl}/membership`,
+        en: `${baseUrl}/en/membership`,
+      },
+    },
+  };
+}
+
+// 點數面額不隨 locale 變動,兌換文案才依 locale 走 messages。
+const REDEMPTION_POINTS = ["500 pt", "1,200 pt", "6,400 pt", "13,400 pt"] as const;
 
 async function getData(): Promise<{ tiers: MembershipTier[]; products: Product[] }> {
   try {
@@ -28,23 +40,35 @@ async function getData(): Promise<{ tiers: MembershipTier[]; products: Product[]
 }
 
 export default async function MembershipPage() {
+  const locale = await getLocale();
+  const messages = getMessages(locale);
   const { tiers, products } = await getData();
   const productByTier = new Map(
     products.map((p) => [(p.metadata as { tier_slug?: string })?.tier_slug, p])
   );
+  const redemptionDescs = [
+    messages.membership.redemptions.artworkRental,
+    messages.membership.redemptions.teaService,
+    messages.membership.redemptions.kyotoJourney,
+    messages.membership.redemptions.tuscanyJourney,
+  ];
+  const REDEMPTIONS = REDEMPTION_POINTS.map((points, i) => ({
+    points,
+    desc: redemptionDescs[i],
+  }));
 
   return (
     <div>
       <div className="bg-ink-deep text-panel">
         <div className="lm-container py-16 text-center sm:py-22">
           <div className="font-cormorant text-[20px] italic text-gold-bright sm:text-[21px]">
-            The Membership Salon
+            {messages.membership.eyebrow}
           </div>
           <h1 className="mx-auto mt-4 mb-4.5 max-w-160 font-serif text-[27px] font-normal tracking-[0.05em] text-panel sm:text-[52px]">
-            會員沙龍
+            {messages.membership.title}
           </h1>
           <p className="mx-auto max-w-130 text-[15.5px] leading-[2] text-cream-soft">
-            加入好日子，累積屬於您的點數。消費、參訪、租賃皆可累點，兌換私人旅程與藝術典藏折扣。
+            {messages.membership.desc}
           </p>
         </div>
       </div>
@@ -62,7 +86,7 @@ export default async function MembershipPage() {
             >
               {recommended && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap bg-gold px-3.5 py-1 text-[11px] tracking-[0.14em] text-ink">
-                  推薦
+                  {messages.membership.recommendedBadge}
                 </div>
               )}
               <div className={`font-cormorant text-[13px] tracking-[0.24em] uppercase ${recommended ? "text-accent-dark" : "text-accent"}`}>
@@ -74,14 +98,17 @@ export default async function MembershipPage() {
                   <div key={perk}>· {perk}</div>
                 ))}
               </div>
-              <div className="mt-7 text-[13px] text-muted-2">年費 {formatTWD(tier.price_yearly)}</div>
+              <div className="mt-7 text-[13px] text-muted-2">
+                {messages.membership.yearlyFeePrefix}
+                {formatTWD(tier.price_yearly, locale)}
+              </div>
               {product && (
                 <QuickAddButton
                   product={product}
                   mode="membership"
                   unitPrice={product.price}
-                  label="加入此方案 →"
-                  addedLabel="已加入購物車 ✓"
+                  label={messages.membership.joinPlan}
+                  addedLabel={messages.membership.addedToCart}
                   className="iv-btn-ghost mt-4 w-full"
                 />
               )}
@@ -92,7 +119,7 @@ export default async function MembershipPage() {
 
       <div className="lm-container py-14 sm:py-24">
         <div className="mb-11 text-center">
-          <h2 className="font-serif text-[24px] font-normal text-ink sm:text-[32px]">點數，可以兌換什麼</h2>
+          <h2 className="font-serif text-[24px] font-normal text-ink sm:text-[32px]">{messages.membership.redeemTitle}</h2>
         </div>
         <div className="grid grid-cols-2 gap-0.5 bg-line md:grid-cols-4">
           {REDEMPTIONS.map((r) => (
@@ -104,7 +131,7 @@ export default async function MembershipPage() {
         </div>
         <div className="mt-13 text-center">
           <Link href="/booking" className="iv-btn-primary">
-            申請入會
+            {messages.membership.applyLabel}
           </Link>
         </div>
       </div>

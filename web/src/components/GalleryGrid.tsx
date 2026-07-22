@@ -4,35 +4,56 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { formatTWD } from "@/lib/format";
 import Placeholder, { gradientForId } from "@/components/Placeholder";
+import { useTranslations } from "@/lib/i18n/context";
 import type { Product } from "@/lib/types";
 
-const FILTERS = ["全部", "風景", "抽象", "靜物", "植物"];
+// 篩選鍵永遠對應 DB 內的中文 category 值(D phase 前 category 尚未翻譯);
+// 顯示文字才依 locale 走 messages,兩者分離以免英文站篩選失效。
+const FILTER_KEYS = ["all", "landscape", "abstract", "stillLife", "botanical"] as const;
+type FilterKey = (typeof FILTER_KEYS)[number];
+const FILTER_CATEGORY: Record<FilterKey, string> = {
+  all: "全部",
+  landscape: "風景",
+  abstract: "抽象",
+  stillLife: "靜物",
+  botanical: "植物",
+};
 
 export default function GalleryGrid({ works }: { works: Product[] }) {
-  const [active, setActive] = useState("全部");
+  const { locale, messages } = useTranslations();
+  const [active, setActive] = useState<FilterKey>("all");
+
+  const FILTER_LABEL: Record<FilterKey, string> = {
+    all: messages.gallery.filterAll,
+    landscape: messages.gallery.filterLandscape,
+    abstract: messages.gallery.filterAbstract,
+    stillLife: messages.gallery.filterStillLife,
+    botanical: messages.gallery.filterBotanical,
+  };
 
   const filtered = useMemo(
-    () => (active === "全部" ? works : works.filter((w) => w.category === active)),
+    () =>
+      active === "all" ? works : works.filter((w) => w.category === FILTER_CATEGORY[active]),
     [active, works]
   );
 
   return (
     <>
       <div className="mt-8 flex flex-wrap gap-3.5">
-        {FILTERS.map((f) => (
+        {FILTER_KEYS.map((key) => (
           <button
-            key={f}
-            onClick={() => setActive(f)}
-            className={`lm-chip ${active === f ? "!bg-ink-deep !text-panel !border-ink-deep" : ""}`}
-            data-active={active === f}
+            key={key}
+            onClick={() => setActive(key)}
+            className={`lm-chip ${active === key ? "!bg-ink-deep !text-panel !border-ink-deep" : ""}`}
+            data-active={active === key}
           >
-            {f}
+            {FILTER_LABEL[key]}
           </button>
         ))}
       </div>
 
       {filtered.length === 0 ? (
-        <div className="iv-card mt-10 text-center text-ink-soft">此分類尚無作品。</div>
+        <div className="iv-card mt-10 text-center text-ink-soft">{messages.gallery.emptyState}</div>
       ) : (
         <div className="mt-8 grid grid-cols-1 gap-x-7 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((w) => {
@@ -55,8 +76,9 @@ export default function GalleryGrid({ works }: { works: Product[] }) {
                   )}
                 </div>
                 <div className="mt-1.5 text-[12.5px] text-muted-2">
-                  {w.price_rental_monthly != null && `租賃 ${formatTWD(w.price_rental_monthly)}/月 · `}
-                  買斷 {formatTWD(w.price)}
+                  {w.price_rental_monthly != null &&
+                    `${messages.home.priceRentalPrefix} ${formatTWD(w.price_rental_monthly, locale)}${messages.home.priceRentalSuffix}`}
+                  {messages.home.priceOutright} {formatTWD(w.price, locale)}
                 </div>
               </Link>
             );

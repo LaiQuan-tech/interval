@@ -1,13 +1,34 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTWD, formatPoints } from "@/lib/format";
 import Placeholder, { gradientForId } from "@/components/Placeholder";
 import ArtworkPurchaseSection from "@/components/ArtworkPurchaseSection";
 import QuickAddButton from "@/components/QuickAddButton";
 import OpenChatButton from "@/components/OpenChatButton";
+import { getLocale, getMessages } from "@/lib/i18n/server";
 import type { MembershipTier, Product } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+// product.name/description 是 DB 內容,D phase 才翻譯;這裡只加 hreflang,
+// 刻意不覆寫 title/description,zh 站沿用 root layout 的預設值,逐字不變。
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  return {
+    alternates: {
+      languages: {
+        "zh-Hant-TW": `${baseUrl}/products/${slug}`,
+        en: `${baseUrl}/en/products/${slug}`,
+      },
+    },
+  };
+}
 
 export default async function ProductDetailPage({
   params,
@@ -15,6 +36,8 @@ export default async function ProductDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const locale = await getLocale();
+  const messages = getMessages(locale);
 
   let product: Product | null = null;
   let tier: MembershipTier | null = null;
@@ -78,7 +101,7 @@ export default async function ProductDetailPage({
           )}
 
           <p className="mt-6 whitespace-pre-wrap text-[15px] leading-[1.9] text-ink-soft">
-            {product.description || "此作品尚無詳細說明。"}
+            {product.description || messages.product.noDescription}
           </p>
 
           <div className="mt-8">
@@ -92,20 +115,20 @@ export default async function ProductDetailPage({
                   <div className="mb-1 text-[13px] text-muted-2">{metadata.duration}</div>
                 )}
                 <div className="mb-2 flex items-baseline gap-2">
-                  <span className="font-cormorant text-[15px] text-accent">from</span>
-                  <span className="font-serif text-[28px] text-ink">{formatTWD(product.price)}</span>
+                  <span className="font-cormorant text-[15px] text-accent">{messages.product.fromLabel}</span>
+                  <span className="font-serif text-[28px] text-ink">{formatTWD(product.price, locale)}</span>
                 </div>
                 {product.points_price != null && (
                   <div className="mb-6 text-[13px] text-muted-2">
-                    或 {formatPoints(product.points_price)}
+                    {messages.product.orPointsPrefix}{formatPoints(product.points_price, locale)}
                   </div>
                 )}
                 <QuickAddButton
                   product={product}
                   mode="journey"
                   unitPrice={product.price}
-                  label="加入購物車"
-                  addedLabel="已加入 ✓"
+                  label={messages.product.journeyAddToCart}
+                  addedLabel={messages.product.addedToCart}
                   className="iv-btn-primary w-full sm:w-auto"
                 />
               </div>
@@ -114,8 +137,8 @@ export default async function ProductDetailPage({
             {product.product_type === "membership" && (
               <div>
                 <div className="mb-5 font-serif text-[28px] text-ink">
-                  {formatTWD(product.price)}
-                  <span className="text-[14px] text-muted-2"> / 年</span>
+                  {formatTWD(product.price, locale)}
+                  <span className="text-[14px] text-muted-2">{messages.product.perYear}</span>
                 </div>
                 {tier && tier.perks.length > 0 && (
                   <div className="mb-6 flex flex-col gap-2.5 text-[14px] leading-[1.6] text-ink-soft">
@@ -128,8 +151,8 @@ export default async function ProductDetailPage({
                   product={product}
                   mode="membership"
                   unitPrice={product.price}
-                  label="加入此方案"
-                  addedLabel="已加入 ✓"
+                  label={messages.product.membershipJoin}
+                  addedLabel={messages.product.addedToCart}
                   className="iv-btn-primary w-full sm:w-auto"
                 />
               </div>
@@ -137,9 +160,9 @@ export default async function ProductDetailPage({
           </div>
 
           <div className="mt-8 border border-line bg-panel p-5 text-sm leading-[1.8] text-ink-soft">
-            需要客製尺寸、企業空間規劃或專屬旅程？跟
-            <span className="mx-1 font-semibold text-accent">AI 顧問</span>
-            說需求，我們會為您準備專屬報價單。
+            {messages.product.customNeedsPrefix}
+            <span className="mx-1 font-semibold text-accent">{messages.product.aiAdvisor}</span>
+            {messages.product.customNeedsSuffix}
             <div className="mt-3">
               <OpenChatButton />
             </div>

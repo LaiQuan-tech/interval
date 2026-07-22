@@ -3,20 +3,23 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { addToCart, openCart } from "@/lib/cart";
+import { useTranslations } from "@/lib/i18n/context";
 import type { PurchaseMode } from "@/lib/types";
 
 type MinimalProduct = { id: string; slug: string; name: string };
 
 // 通用加入購物車按鈕:作品(買斷/月租)、旅程、會員方案皆共用,由呼叫端決定 mode 與該模式下的單價
+// 唯一呼叫端是 ArtworkPurchaseSection(作品詳情頁),admin 不引用此元件,故內部直接吃 i18n context;
+// ctaLabel/buyLabel/disabledLabel 仍可由呼叫端覆寫,未覆寫則 fallback 到當前 locale 的預設文案。
 export default function AddToCartButton({
   product,
   mode = "buyout",
   unitPrice,
   showQuantity = true,
-  ctaLabel = "加入購物車",
-  buyLabel = "立即結帳",
+  ctaLabel,
+  buyLabel,
   disabled = false,
-  disabledLabel = "補貨中",
+  disabledLabel,
 }: {
   product: MinimalProduct;
   mode?: PurchaseMode;
@@ -28,8 +31,12 @@ export default function AddToCartButton({
   disabledLabel?: string;
 }) {
   const router = useRouter();
+  const { messages } = useTranslations();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const resolvedCtaLabel = ctaLabel ?? messages.product.addToCart;
+  const resolvedBuyLabel = buyLabel ?? messages.product.buyNow;
+  const resolvedDisabledLabel = disabledLabel ?? messages.product.restocking;
 
   function handleAdd(goCheckout: boolean) {
     addToCart(
@@ -55,10 +62,10 @@ export default function AddToCartButton({
     <div className="flex flex-col gap-3">
       {showQuantity && (
         <div className="flex items-center gap-3">
-          <span className="text-sm text-muted">數量</span>
+          <span className="text-sm text-muted">{messages.product.quantityLabel}</span>
           <div className="flex items-center border border-line-2">
             <button
-              aria-label="減少數量"
+              aria-label={messages.product.decreaseQty}
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
               className="flex h-11 w-11 items-center justify-center text-lg text-ink-deep"
             >
@@ -66,7 +73,7 @@ export default function AddToCartButton({
             </button>
             <span className="w-8 text-center font-semibold">{quantity}</span>
             <button
-              aria-label="增加數量"
+              aria-label={messages.product.increaseQty}
               onClick={() => setQuantity(quantity + 1)}
               className="flex h-11 w-11 items-center justify-center text-lg text-ink-deep"
             >
@@ -78,10 +85,10 @@ export default function AddToCartButton({
 
       <div className="flex flex-col gap-2 sm:flex-row">
         <button onClick={() => handleAdd(false)} disabled={disabled} className="iv-btn-ghost flex-1">
-          {disabled ? disabledLabel : added ? "已加入 ✓" : ctaLabel}
+          {disabled ? resolvedDisabledLabel : added ? messages.product.addedToCart : resolvedCtaLabel}
         </button>
         <button onClick={() => handleAdd(true)} disabled={disabled} className="iv-btn-primary flex-1">
-          {buyLabel}
+          {resolvedBuyLabel}
         </button>
       </div>
     </div>

@@ -12,7 +12,31 @@ const en: Messages = {
   },
   nav: {
     home: "Home",
-    gallery: "Gallery",
+    gallery: "The Collection",
+    journeys: "Private Journeys",
+    rental: "Rent · Own",
+    membership: "Membership Salon",
+    booking: "Book a Visit",
+    memberCenter: "My Account",
+    login: "Log In",
+    loginRegister: "Log In / Sign Up",
+    adminPanel: "Admin",
+    openMenu: "Open menu",
+  },
+  header: {
+    brand: "Good Days",
+  },
+  footer: {
+    brand: "Good Days",
+    tagline:
+      "A bookstore salon in the city, paired with an online gallery of art and journeys. Collect a painting, begin a journey.",
+    pointsRedeem: "Redeem Points",
+    addressLine1: "Da'an District, Taipei",
+    hours: "Tue – Sun 11:00–20:00",
+    email: "salon@goodays.tw",
+    copyright: "Good Days",
+    privacyPolicy: "Privacy Policy",
+    terms: "Terms of Service",
   },
 };
 

@@ -10,6 +10,29 @@ const zh = {
   nav: {
     home: "首頁",
     gallery: "藝術典藏",
+    journeys: "私人旅程",
+    rental: "租賃 · 買斷",
+    membership: "會員沙龍",
+    booking: "預約參訪",
+    memberCenter: "會員中心",
+    login: "登入",
+    loginRegister: "登入 / 註冊",
+    adminPanel: "後台管理",
+    openMenu: "開啟選單",
+  },
+  header: {
+    brand: "好日子",
+  },
+  footer: {
+    brand: "好日子",
+    tagline: "線下書店門市 × 線上藝術與旅程。收藏一幅畫，啟程一段旅行。",
+    pointsRedeem: "點數兌換",
+    addressLine1: "台北市大安區",
+    hours: "週二 – 週日 11:00–20:00",
+    email: "salon@goodays.tw",
+    copyright: "好日子 · Good Days",
+    privacyPolicy: "隱私政策",
+    terms: "服務條款",
   },
 };
 

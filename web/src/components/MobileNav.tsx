@@ -5,6 +5,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import LocaleSwitcher from "@/components/LocaleSwitcher";
 import { NAV_ITEMS } from "@/components/NavLinks";
+import { useTranslations } from "@/lib/i18n/context";
 
 export default function MobileNav({
   loggedIn,
@@ -15,11 +16,12 @@ export default function MobileNav({
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname() ?? "/";
+  const { messages } = useTranslations();
 
   return (
     <div className="lg:hidden">
       <button
-        aria-label="開啟選單"
+        aria-label={messages.nav.openMenu}
         onClick={() => setOpen(!open)}
         className="flex h-11 w-11 items-center justify-center text-ink-deep hover:bg-panel"
       >
@@ -50,7 +52,7 @@ export default function MobileNav({
                 data-active={item.match(pathname)}
                 className="border-b border-line/60 py-3.5 tracking-[0.04em] text-nav last:border-0 data-[active=true]:text-accent"
               >
-                {item.label}
+                {messages.nav[item.labelKey]}
               </Link>
             ))}
             <Link
@@ -58,7 +60,7 @@ export default function MobileNav({
               onClick={() => setOpen(false)}
               className="border-b border-line/60 py-3.5 font-medium tracking-[0.04em] text-ink-deep"
             >
-              預約參訪
+              {messages.nav.booking}
             </Link>
             {loggedIn ? (
               <Link
@@ -66,7 +68,7 @@ export default function MobileNav({
                 onClick={() => setOpen(false)}
                 className="border-b border-line/60 py-3.5 tracking-[0.04em] text-nav"
               >
-                會員中心
+                {messages.nav.memberCenter}
               </Link>
             ) : (
               <Link
@@ -74,7 +76,7 @@ export default function MobileNav({
                 onClick={() => setOpen(false)}
                 className="border-b border-line/60 py-3.5 tracking-[0.04em] text-nav"
               >
-                登入 / 註冊
+                {messages.nav.loginRegister}
               </Link>
             )}
             {isAdmin && (
@@ -83,7 +85,7 @@ export default function MobileNav({
                 onClick={() => setOpen(false)}
                 className="py-3.5 tracking-[0.04em] text-accent"
               >
-                後台管理
+                {messages.nav.adminPanel}
               </Link>
             )}
             <div className="flex justify-center border-t border-line/60 py-4">

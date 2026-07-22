@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { getLocale } from "@/lib/i18n/server";
 
 export const metadata: Metadata = {
   title: {
@@ -22,11 +23,13 @@ export const viewport: Viewport = {
 const FONTS_URL =
   "https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Noto+Sans+TC:wght@300;400;500&display=swap";
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const locale = await getLocale();
+  const htmlLang = locale === "en" ? "en" : "zh-Hant-TW";
   return (
-    <html lang="zh-Hant-TW">
+    <html lang={htmlLang}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

@@ -140,6 +140,8 @@ export type Quote = {
   sent_at: string | null;
   accepted_at: string | null;
   created_at: string;
+  // 客戶下單當下的介面語系,決定報價/訂單通知信中英文分支。default 'zh',既有報價一律 'zh'。
+  locale: "zh" | "en";
 };
 
 export type ChatMessage = {

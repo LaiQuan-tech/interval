@@ -200,7 +200,8 @@ export async function POST(req: NextRequest) {
                 name: readiness.name,
                 phone: readiness.phone,
               },
-              userId
+              userId,
+              locale
             );
             quotePending = Boolean(quote);
             if (quotePending) {

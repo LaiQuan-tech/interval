@@ -3,6 +3,7 @@ import { generateQuoteLineItems } from "@/lib/ai";
 import { getQuoteConfig, getRateCard } from "@/lib/settings";
 import { emailShell, notifyAdmin, sendMail, siteUrl } from "@/lib/resend";
 import type { ChatMessage, Quote, QuoteLineItem } from "@/lib/types";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/config";
 
 export function computeTotals(items: QuoteLineItem[], taxRate: number) {
   const subtotal = items.reduce((s, i) => s + i.unit_price * i.quantity, 0);
@@ -15,7 +16,8 @@ export async function createQuoteDraftFromSession(
   sessionId: string,
   messages: ChatMessage[],
   contact: { email: string; name: string; phone: string },
-  userId: string | null
+  userId: string | null,
+  locale: Locale = DEFAULT_LOCALE
 ) {
   const supabase = createAdminClient();
 
@@ -45,6 +47,7 @@ export async function createQuoteDraftFromSession(
       ...totals,
       note: draft.summary,
       created_by: "ai",
+      locale,
     })
     .select("*")
     .single();
@@ -95,17 +98,35 @@ export async function sendQuoteToCustomer(quoteId: string) {
   if (error || !quote) return { ok: false as const, error: "報價單狀態不允許寄出" };
   if (!quote.contact_email) return { ok: false as const, error: "缺少客戶 email" };
 
-  const ok = await sendMail({
-    to: quote.contact_email,
-    subject: `【好日子】您的報價單 ${quote.quote_no}`,
-    html: emailShell(
-      `報價單 ${quote.quote_no}`,
-      `<p>${quote.contact_name || "您好"},您的報價單已準備好:</p>
+  // 客戶信依 quote.locale 分支——英文版連結導向 /en 版報價頁,中文分支原封不動搬入 else。
+  const quoteLocale: Locale = quote.locale === "en" ? "en" : "zh";
+  let ok: boolean;
+  if (quoteLocale === "en") {
+    ok = await sendMail({
+      to: quote.contact_email,
+      subject: `[Good Days] Your Quote ${quote.quote_no}`,
+      html: emailShell(
+        `Quote ${quote.quote_no}`,
+        `<p>Dear ${quote.contact_name || "Customer"}, your quote is ready:</p>
+       <p style="margin:20px 0;"><a href="${siteUrl()}/en/quote/${quote.public_token}"
+          style="background:#2e2519;color:#f7f1e5;padding:12px 28px;border-radius:2px;text-decoration:none;font-weight:700;letter-spacing:.05em;">View Quote</a></p>
+       <p>Valid until ${validUntil}. Click "Accept Quote" on the quote page to place your order directly.</p>`,
+        "en"
+      ),
+    });
+  } else {
+    ok = await sendMail({
+      to: quote.contact_email,
+      subject: `【好日子】您的報價單 ${quote.quote_no}`,
+      html: emailShell(
+        `報價單 ${quote.quote_no}`,
+        `<p>${quote.contact_name || "您好"},您的報價單已準備好:</p>
        <p style="margin:20px 0;"><a href="${siteUrl()}/quote/${quote.public_token}"
           style="background:#2e2519;color:#f7f1e5;padding:12px 28px;border-radius:2px;text-decoration:none;font-weight:700;letter-spacing:.05em;">查看報價單</a></p>
        <p>報價有效期限至 ${validUntil}。在報價單頁面按「接受報價」即可直接成立訂單。</p>`
-    ),
-  });
+      ),
+    });
+  }
 
   return { ok, error: ok ? null : "email 寄送失敗(請確認 RESEND_API_KEY)" };
 }
@@ -189,15 +210,30 @@ export async function acceptQuoteByToken(token: string) {
     .eq("id", quote.id);
 
   if (quote.contact_email) {
-    await sendMail({
-      to: quote.contact_email,
-      subject: `【好日子】訂單成立 ${order.order_no}`,
-      html: emailShell(
-        `訂單 ${order.order_no} 已成立`,
-        `<p>感謝接受報價!您的訂單已成立,金額 NT$ ${order.total.toLocaleString()}。</p>
+    // 客戶信依 quote.locale 分支,中文分支原封不動搬入 else。
+    const quoteLocale: Locale = quote.locale === "en" ? "en" : "zh";
+    if (quoteLocale === "en") {
+      await sendMail({
+        to: quote.contact_email,
+        subject: `[Good Days] Order Confirmed — ${order.order_no}`,
+        html: emailShell(
+          `Order ${order.order_no} Confirmed`,
+          `<p>Thank you for accepting the quote! Your order has been created for NT$ ${order.total.toLocaleString()}.</p>
+         <p><a href="${siteUrl()}/en/orders/${order.public_token}">View Order & Payment Details</a></p>`,
+          "en"
+        ),
+      });
+    } else {
+      await sendMail({
+        to: quote.contact_email,
+        subject: `【好日子】訂單成立 ${order.order_no}`,
+        html: emailShell(
+          `訂單 ${order.order_no} 已成立`,
+          `<p>感謝接受報價!您的訂單已成立,金額 NT$ ${order.total.toLocaleString()}。</p>
          <p><a href="${siteUrl()}/orders/${order.public_token}">查看訂單與付款資訊</a></p>`
-      ),
-    });
+        ),
+      });
+    }
   }
   await notifyAdmin(
     `報價 ${quote.quote_no} 已接受並轉訂單 ${order.order_no}`,

@@ -5,11 +5,13 @@ import {
   formatDate,
   formatDateTime,
   formatTWD,
-  ORDER_STATUS_LABEL,
-  PAYMENT_METHOD_LABEL,
-  PURCHASE_MODE_LABEL,
+  getOrderStatusLabel,
+  getPaymentMethodLabel,
+  getPurchaseModeLabel,
+  getShippingMethodLabel,
 } from "@/lib/format";
 import PaymentReportForm from "@/components/PaymentReportForm";
+import { getLocale, getMessages } from "@/lib/i18n/server";
 import type { Order, OrderItem } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -57,90 +59,98 @@ export default async function OrderPage({
 
   if (!order) notFound();
 
-  const [company, shippingConfig] = await Promise.all([getCompanyProfile(), getShippingConfig()]);
+  const [company, shippingConfig, locale] = await Promise.all([
+    getCompanyProfile(),
+    getShippingConfig(),
+    getLocale(),
+  ]);
+  const messages = getMessages(locale);
+  const t = messages.order;
   const deadline = new Date(order.created_at);
   deadline.setDate(deadline.getDate() + shippingConfig.deadline_days);
 
   const invoiceSummary = (() => {
     if (!order.invoice?.type) return null;
     if (order.invoice.type === "company") {
-      return `統一編號 ${order.invoice.tax_id ?? "—"} ／抬頭 ${order.invoice.title ?? "—"}`;
+      return `${t.invoiceCompanyPrefix}${order.invoice.tax_id ?? "—"}${t.invoiceCompanyMid}${order.invoice.title ?? "—"}`;
     }
     return order.invoice.carrier
-      ? `雲端發票(手機條碼 ${order.invoice.carrier})`
-      : "雲端發票(個人)";
+      ? `${t.invoiceCloudCarrierPrefix}${order.invoice.carrier}${t.invoiceCloudCarrierSuffix}`
+      : t.invoiceCloudPersonal;
   })();
 
   return (
     <div className="lm-container max-w-135 py-10 sm:py-16">
       {created && (
         <div className="mb-6 border border-gold bg-panel p-4 text-center font-medium text-ink">
-          訂單成立！我們已寄出確認信到 {order.contact_email}
+          {t.createdBannerPrefix}{order.contact_email}
         </div>
       )}
 
       <div className="iv-card">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-sm text-ink-soft">訂單編號</div>
+            <div className="text-sm text-ink-soft">{t.orderNoLabel}</div>
             <h1 className="font-serif text-xl text-ink">{order.order_no}</h1>
           </div>
           <span className={`iv-chip ${STATUS_CHIP[order.status] ?? ""}`}>
-            {ORDER_STATUS_LABEL[order.status] ?? order.status}
+            {getOrderStatusLabel(order.status, locale)}
           </span>
         </div>
 
         <div className="mt-5 space-y-1.5 border-t border-line pt-5 text-sm">
-          <p><span className="text-ink-soft">訂購時間：</span>{formatDateTime(order.created_at)}</p>
-          <p><span className="text-ink-soft">收件人：</span>{order.contact_name}</p>
+          <p><span className="text-ink-soft">{t.orderedAtLabel}</span>{formatDateTime(order.created_at, locale)}</p>
+          <p><span className="text-ink-soft">{t.recipientLabel}</span>{order.contact_name}</p>
           {order.shipping_method !== "none" && (
             <p>
               <span className="text-ink-soft">
-                {order.shipping_method === "pickup" ? "取貨方式：" : "收件地址："}
+                {order.shipping_method === "pickup" ? t.pickupMethodLabel : t.shippingAddressLabel}
               </span>
-              {order.shipping_method === "pickup" ? "門市自取" : order.shipping_address || "—"}
+              {order.shipping_method === "pickup"
+                ? getShippingMethodLabel("pickup", locale)
+                : order.shipping_address || "—"}
             </p>
           )}
           {invoiceSummary && (
-            <p><span className="text-ink-soft">發票：</span>{invoiceSummary}</p>
+            <p><span className="text-ink-soft">{t.invoiceLabel}</span>{invoiceSummary}</p>
           )}
-          <p><span className="text-ink-soft">付款方式：</span>{PAYMENT_METHOD_LABEL[order.payment_method] ?? order.payment_method}</p>
+          <p><span className="text-ink-soft">{t.paymentMethodLabel}</span>{getPaymentMethodLabel(order.payment_method, locale)}</p>
         </div>
 
         <div className="mt-5 border-t border-line pt-5">
-          <h2 className="mb-3 font-serif text-ink">商品明細</h2>
+          <h2 className="mb-3 font-serif text-ink">{t.itemsTitle}</h2>
           <ul className="space-y-2 text-sm">
             {items.map((i) => (
               <li key={i.id} className="flex justify-between gap-3">
                 <span>
                   {i.name}
                   <span className="ml-1 text-[11px] text-accent">
-                    ({PURCHASE_MODE_LABEL[i.purchase_mode] ?? i.purchase_mode})
+                    ({getPurchaseModeLabel(i.purchase_mode, locale)})
                   </span>
                   {" "}× {i.quantity}
                 </span>
-                <span className="shrink-0">{formatTWD(i.unit_price * i.quantity)}</span>
+                <span className="shrink-0">{formatTWD(i.unit_price * i.quantity, locale)}</span>
               </li>
             ))}
           </ul>
           <div className="mt-4 space-y-1.5 border-t border-line pt-4 text-sm">
             <div className="flex justify-between">
-              <span className="text-ink-soft">小計</span>
-              <span>{formatTWD(order.subtotal)}</span>
+              <span className="text-ink-soft">{t.subtotal}</span>
+              <span>{formatTWD(order.subtotal, locale)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-ink-soft">運費</span>
-              <span>{order.shipping_fee === 0 ? "免運" : formatTWD(order.shipping_fee)}</span>
+              <span className="text-ink-soft">{t.shippingFee}</span>
+              <span>{order.shipping_fee === 0 ? t.shippingFree : formatTWD(order.shipping_fee, locale)}</span>
             </div>
             {order.points_used > 0 && (
               <div className="flex justify-between text-accent">
-                <span>點數折抵</span>
-                <span>-{formatTWD(order.points_used)}</span>
+                <span>{t.pointsDiscount}</span>
+                <span>-{formatTWD(order.points_used, locale)}</span>
               </div>
             )}
             <div className="flex justify-between pt-1 text-base font-medium">
-              <span>合計</span>
-              <span className="font-serif text-[18px] text-ink">{formatTWD(order.total)}</span>
+              <span>{t.total}</span>
+              <span className="font-serif text-[18px] text-ink">{formatTWD(order.total, locale)}</span>
             </div>
           </div>
         </div>
@@ -149,14 +159,14 @@ export default async function OrderPage({
           order.payment_method === "bank_transfer" &&
           company.bank_info && (
             <div className="mt-5 border border-line bg-panel p-4 text-sm leading-relaxed">
-              <p className="font-medium text-ink">匯款資訊</p>
+              <p className="font-medium text-ink">{t.bankInfoTitle}</p>
               <p className="mt-1 whitespace-pre-wrap text-ink-soft">{company.bank_info}</p>
               <p className="mt-2 text-ink-soft">
-                應付金額：<span className="font-semibold text-ink">{formatTWD(order.total)}</span>
+                {t.amountDueLabel}<span className="font-semibold text-ink">{formatTWD(order.total, locale)}</span>
               </p>
-              <p className="text-ink-soft">匯款期限：{formatDate(deadline)} 前</p>
+              <p className="text-ink-soft">{t.paymentDeadlinePrefix}{formatDate(deadline, locale)}{t.paymentDeadlineSuffix}</p>
               <p className="mt-2 text-ink-soft">
-                完成匯款後我們會盡快確認並安排出貨。
+                {t.bankInfoNote}
               </p>
               <PaymentReportForm token={token} initialReport={order.payment_report} />
             </div>
@@ -164,7 +174,7 @@ export default async function OrderPage({
       </div>
 
       <p className="mt-6 text-center text-sm text-ink-soft">
-        有任何問題，歡迎使用右下角智慧客服{company.email ? `或來信 ${company.email}` : ""}。
+        {t.footerHelpPrefix}{company.email ? `${t.footerHelpEmailPrefix}${company.email}` : ""}{t.footerHelpSuffix}
       </p>
     </div>
   );

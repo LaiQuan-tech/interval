@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { markQuoteViewed } from "@/lib/quote";
-import { formatDate, formatTWD, QUOTE_STATUS_LABEL } from "@/lib/format";
+import { formatDate, formatTWD, getQuoteStatusLabel } from "@/lib/format";
 import AcceptQuoteButton from "@/components/AcceptQuoteButton";
+import { getLocale, getMessages } from "@/lib/i18n/server";
 import type { Quote } from "@/lib/types";
 import Link from "next/link";
 
@@ -38,40 +39,43 @@ export default async function QuotePage({
 
   const canAccept = ["sent", "viewed"].includes(quote.status);
   const isConverted = quote.status === "converted" || quote.status === "accepted";
+  const locale = await getLocale();
+  const messages = getMessages(locale);
+  const t = messages.quote;
 
   return (
     <div className="lm-container max-w-135 py-10 sm:py-16">
       <div className="iv-card">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-sm text-ink-soft">報價單編號</div>
+            <div className="text-sm text-ink-soft">{t.quoteNoLabel}</div>
             <h1 className="font-serif text-xl text-ink">{quote.quote_no}</h1>
           </div>
           <span className="iv-chip bg-panel text-accent">
-            {QUOTE_STATUS_LABEL[quote.status] ?? quote.status}
+            {getQuoteStatusLabel(quote.status, locale)}
           </span>
         </div>
 
         <div className="mt-5 space-y-1.5 border-t border-line pt-5 text-sm">
           {quote.contact_name && (
-            <p><span className="text-ink-soft">客戶：</span>{quote.contact_name}</p>
+            <p><span className="text-ink-soft">{t.customerLabel}</span>{quote.contact_name}</p>
           )}
-          <p><span className="text-ink-soft">報價日期：</span>{formatDate(quote.sent_at ?? quote.created_at)}</p>
+          <p><span className="text-ink-soft">{t.dateLabel}</span>{formatDate(quote.sent_at ?? quote.created_at, locale)}</p>
           {quote.valid_until && (
-            <p><span className="text-ink-soft">有效期限：</span>{formatDate(quote.valid_until)}</p>
+            <p><span className="text-ink-soft">{t.validUntilLabel}</span>{formatDate(quote.valid_until, locale)}</p>
           )}
         </div>
 
         <div className="mt-5 border-t border-line pt-5">
-          <h2 className="mb-3 font-serif text-ink">報價明細</h2>
+          <h2 className="mb-3 font-serif text-ink">{t.detailsTitle}</h2>
           <div className="iv-table-wrap">
             <table className="w-full min-w-105 border-collapse text-sm">
               <thead>
                 <tr className="border-b border-line text-left text-ink-soft">
-                  <th className="py-2 font-medium">項目</th>
-                  <th className="py-2 text-right font-medium">單價</th>
-                  <th className="py-2 text-right font-medium">數量</th>
-                  <th className="py-2 text-right font-medium">金額</th>
+                  <th className="py-2 font-medium">{t.itemColumn}</th>
+                  <th className="py-2 text-right font-medium">{t.unitPriceColumn}</th>
+                  <th className="py-2 text-right font-medium">{t.qtyColumn}</th>
+                  <th className="py-2 text-right font-medium">{t.amountColumn}</th>
                 </tr>
               </thead>
               <tbody>
@@ -83,10 +87,10 @@ export default async function QuotePage({
                         <span className="block text-xs text-ink-soft">{item.note}</span>
                       )}
                     </td>
-                    <td className="py-2.5 text-right">{formatTWD(item.unit_price)}</td>
+                    <td className="py-2.5 text-right">{formatTWD(item.unit_price, locale)}</td>
                     <td className="py-2.5 text-right">{item.quantity}</td>
                     <td className="py-2.5 text-right">
-                      {formatTWD(item.unit_price * item.quantity)}
+                      {formatTWD(item.unit_price * item.quantity, locale)}
                     </td>
                   </tr>
                 ))}
@@ -96,18 +100,18 @@ export default async function QuotePage({
 
           <div className="mt-4 space-y-1.5 text-sm">
             <div className="flex justify-between">
-              <span className="text-ink-soft">小計</span>
-              <span>{formatTWD(quote.subtotal)}</span>
+              <span className="text-ink-soft">{t.subtotal}</span>
+              <span>{formatTWD(quote.subtotal, locale)}</span>
             </div>
             {quote.tax > 0 && (
               <div className="flex justify-between">
-                <span className="text-ink-soft">稅金</span>
-                <span>{formatTWD(quote.tax)}</span>
+                <span className="text-ink-soft">{t.tax}</span>
+                <span>{formatTWD(quote.tax, locale)}</span>
               </div>
             )}
             <div className="flex justify-between pt-1 text-base font-medium">
-              <span>合計</span>
-              <span className="font-serif text-[18px] text-ink">{formatTWD(quote.total)}</span>
+              <span>{t.total}</span>
+              <span className="font-serif text-[18px] text-ink">{formatTWD(quote.total, locale)}</span>
             </div>
           </div>
         </div>
@@ -116,21 +120,21 @@ export default async function QuotePage({
           <div className="mt-6 border-t border-line pt-6">
             <AcceptQuoteButton token={token} />
             <p className="mt-3 text-center text-xs text-ink-soft">
-              按下「接受報價」即會自動成立訂單，並寄送付款資訊到您的信箱。
+              {t.acceptNote}
             </p>
           </div>
         )}
 
         {isConverted && (
           <div className="mt-6 border border-gold bg-panel p-4 text-center text-sm font-medium text-ink">
-            此報價已接受並成立訂單，請至信箱查看訂單資訊。
+            {t.convertedNotice}
           </div>
         )}
         {quote.status === "expired" && (
           <div className="mt-6 border border-line bg-warn-soft p-4 text-center text-sm text-warn">
-            此報價已過期，如仍有需求歡迎透過
-            <Link href="/quote-info" className="underline">智慧客服</Link>
-            重新詢價。
+            {t.expiredPrefix}
+            <Link href="/quote-info" className="underline">{t.expiredLinkLabel}</Link>
+            {t.expiredSuffix}
           </div>
         )}
       </div>

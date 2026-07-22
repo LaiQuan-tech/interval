@@ -2,8 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type { Locale } from "@/lib/i18n/config";
 
-export default function LogoutButton() {
+// 共用元件:storefront /account 與 admin(AdminSidebar/AdminBottomNav)都會 render。
+// admin 目前沒有包 I18nProvider,所以這裡刻意不用 useTranslations() context(呼叫會拋錯),
+// 改用獨立的最小 locale map,由呼叫端自行決定 locale——admin 呼叫端不傳(預設 "zh"),
+// 保證後台永遠中文;storefront /account 由 server component 算好 locale 後傳入。
+const LABEL: Record<Locale, string> = { zh: "登出", en: "Log Out" };
+
+export default function LogoutButton({ locale = "zh" }: { locale?: Locale }) {
   const router = useRouter();
 
   return (
@@ -16,7 +23,7 @@ export default function LogoutButton() {
         router.refresh();
       }}
     >
-      登出
+      {LABEL[locale]}
     </button>
   );
 }

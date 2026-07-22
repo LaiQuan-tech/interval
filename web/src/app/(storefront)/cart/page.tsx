@@ -9,10 +9,13 @@ import {
   updateQuantity,
   type CartItem,
 } from "@/lib/cart";
-import { formatTWD, PURCHASE_MODE_LABEL } from "@/lib/format";
+import { formatTWD, getPurchaseModeLabel } from "@/lib/format";
 import Placeholder, { gradientForId } from "@/components/Placeholder";
+import { useTranslations } from "@/lib/i18n/context";
 
 export default function CartPage() {
+  const { locale, messages } = useTranslations();
+  const t = messages.cart;
   const [items, setItems] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);
 
@@ -28,13 +31,13 @@ export default function CartPage() {
 
   return (
     <div className="lm-container py-10 sm:py-16">
-      <h1 className="font-serif text-[26px] font-normal text-ink sm:text-[32px]">購物車</h1>
+      <h1 className="font-serif text-[26px] font-normal text-ink sm:text-[32px]">{t.title}</h1>
 
       {!ready ? null : items.length === 0 ? (
         <div className="iv-card mt-8 flex flex-col items-center gap-4 py-14 text-center">
-          <p className="text-ink-soft">購物車是空的</p>
+          <p className="text-ink-soft">{t.empty}</p>
           <Link href="/gallery" className="iv-btn-primary">
-            去逛逛典藏
+            {t.browseCollection}
           </Link>
         </div>
       ) : (
@@ -56,11 +59,11 @@ export default function CartPage() {
                         {item.name}
                       </Link>
                       <span className="mt-1 inline-block text-[11px] tracking-[0.04em] text-accent">
-                        {PURCHASE_MODE_LABEL[item.mode] ?? item.mode}
+                        {getPurchaseModeLabel(item.mode, locale)}
                       </span>
                     </div>
                     <button
-                      aria-label="移除"
+                      aria-label={t.removeAriaLabel}
                       onClick={() => updateQuantity(item.productId, item.mode, 0)}
                       className="text-ink-soft hover:text-danger"
                     >
@@ -70,7 +73,7 @@ export default function CartPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center border border-line-2">
                       <button
-                        aria-label="減少"
+                        aria-label={t.decreaseAriaLabel}
                         onClick={() => updateQuantity(item.productId, item.mode, item.quantity - 1)}
                         className="flex h-9 w-9 items-center justify-center text-ink-deep"
                       >
@@ -78,14 +81,14 @@ export default function CartPage() {
                       </button>
                       <span className="w-7 text-center text-sm font-semibold">{item.quantity}</span>
                       <button
-                        aria-label="增加"
+                        aria-label={t.increaseAriaLabel}
                         onClick={() => updateQuantity(item.productId, item.mode, item.quantity + 1)}
                         className="flex h-9 w-9 items-center justify-center text-ink-deep"
                       >
                         +
                       </button>
                     </div>
-                    <span className="font-serif text-ink">{formatTWD(item.price * item.quantity)}</span>
+                    <span className="font-serif text-ink">{formatTWD(item.price * item.quantity, locale)}</span>
                   </div>
                 </div>
               </div>
@@ -93,23 +96,23 @@ export default function CartPage() {
           </div>
 
           <div className="iv-card h-fit lg:sticky lg:top-24">
-            <h2 className="font-serif text-lg text-ink">訂單摘要</h2>
+            <h2 className="font-serif text-lg text-ink">{t.summaryTitle}</h2>
             <div className="mt-4 space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-ink-soft">小計</span>
-                <span>{formatTWD(subtotal)}</span>
+                <span className="text-ink-soft">{t.subtotal}</span>
+                <span>{formatTWD(subtotal, locale)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-ink-soft">運費</span>
-                <span>結帳時計算</span>
+                <span className="text-ink-soft">{t.shipping}</span>
+                <span>{t.shippingCalcAtCheckout}</span>
               </div>
             </div>
             <div className="mt-4 flex justify-between border-t border-line pt-4 font-medium">
-              <span>合計</span>
-              <span className="font-serif text-[18px] text-ink">{formatTWD(subtotal)}</span>
+              <span>{t.total}</span>
+              <span className="font-serif text-[18px] text-ink">{formatTWD(subtotal, locale)}</span>
             </div>
             <Link href="/checkout" className="iv-btn-primary mt-5 w-full">
-              前往結帳
+              {t.proceedToCheckout}
             </Link>
           </div>
         </div>

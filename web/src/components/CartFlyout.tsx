@@ -11,8 +11,9 @@ import {
   updateQuantity,
   type CartItem,
 } from "@/lib/cart";
-import { formatTWD, PURCHASE_MODE_LABEL } from "@/lib/format";
+import { formatTWD, getPurchaseModeLabel } from "@/lib/format";
 import Placeholder, { gradientForId } from "@/components/Placeholder";
+import { useTranslations } from "@/lib/i18n/context";
 
 // 右側滑出的購物車抽屜。自寫 fixed overlay + transform,不引入 shadcn,維持象牙沙龍視覺。
 // 開啟時機:加入購物車後(CART_OPEN_EVENT)自動滑出;Header 的購物車圖示點擊也會觸發。
@@ -21,6 +22,8 @@ export default function CartFlyout({
 }: {
   shippingConfig: { fee_home: number; free_threshold_home: number };
 }) {
+  const { locale, messages } = useTranslations();
+  const t = messages.cart;
   const [items, setItems] = useState<CartItem[]>([]);
   const [open, setOpen] = useState(false);
 
@@ -72,21 +75,21 @@ export default function CartFlyout({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="購物車"
+        aria-label={t.ariaLabel}
         className={`fixed right-0 top-0 z-50 flex h-dvh w-full max-w-md flex-col bg-paper shadow-2xl transition-transform duration-300 ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="flex items-center justify-between border-b border-line px-6 py-5">
           <h2 className="font-serif text-lg text-ink">
-            購物車
+            {t.title}
             {itemCount > 0 && (
               <span className="ml-2 font-sans text-sm text-ink-soft">({itemCount})</span>
             )}
           </h2>
           <button
             type="button"
-            aria-label="關閉購物車"
+            aria-label={t.closeAriaLabel}
             onClick={() => setOpen(false)}
             className="flex h-9 w-9 items-center justify-center text-ink-soft hover:text-ink"
           >
@@ -96,9 +99,9 @@ export default function CartFlyout({
 
         {items.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-            <p className="text-ink-soft">購物車是空的</p>
+            <p className="text-ink-soft">{t.empty}</p>
             <Link href="/gallery" onClick={() => setOpen(false)} className="iv-btn-primary">
-              去逛逛典藏
+              {t.browseCollection}
             </Link>
           </div>
         ) : (
@@ -107,10 +110,12 @@ export default function CartFlyout({
               <div className="border-b border-line bg-panel px-6 py-3 shrink-0">
                 <p className="text-xs text-ink-soft">
                   {reached ? (
-                    "已達宅配免運門檻 ✓"
+                    t.freeShippingReached
                   ) : (
                     <>
-                      再購 <span className="font-semibold text-accent">{formatTWD(remaining)}</span> 享宅配免運
+                      {t.freeShippingPrefix}
+                      <span className="font-semibold text-accent">{formatTWD(remaining, locale)}</span>
+                      {t.freeShippingSuffix}
                     </>
                   )}
                 </p>
@@ -133,12 +138,12 @@ export default function CartFlyout({
                         <div>
                           <p className="line-clamp-2 text-sm font-medium text-ink">{item.name}</p>
                           <span className="mt-0.5 inline-block text-[11px] text-accent">
-                            {PURCHASE_MODE_LABEL[item.mode] ?? item.mode}
+                            {getPurchaseModeLabel(item.mode, locale)}
                           </span>
                         </div>
                         <button
                           type="button"
-                          aria-label="移除"
+                          aria-label={t.removeAriaLabel}
                           onClick={() => updateQuantity(item.productId, item.mode, 0)}
                           className="shrink-0 text-ink-soft hover:text-danger"
                         >
@@ -149,7 +154,7 @@ export default function CartFlyout({
                         <div className="flex items-center border border-line-2">
                           <button
                             type="button"
-                            aria-label="減少"
+                            aria-label={t.decreaseAriaLabel}
                             onClick={() => updateQuantity(item.productId, item.mode, item.quantity - 1)}
                             className="flex h-7 w-7 items-center justify-center text-sm text-ink-deep"
                           >
@@ -158,7 +163,7 @@ export default function CartFlyout({
                           <span className="w-6 text-center text-xs font-semibold">{item.quantity}</span>
                           <button
                             type="button"
-                            aria-label="增加"
+                            aria-label={t.increaseAriaLabel}
                             onClick={() => updateQuantity(item.productId, item.mode, item.quantity + 1)}
                             className="flex h-7 w-7 items-center justify-center text-sm text-ink-deep"
                           >
@@ -166,7 +171,7 @@ export default function CartFlyout({
                           </button>
                         </div>
                         <span className="font-serif text-sm text-ink">
-                          {formatTWD(item.price * item.quantity)}
+                          {formatTWD(item.price * item.quantity, locale)}
                         </span>
                       </div>
                     </div>
@@ -177,16 +182,16 @@ export default function CartFlyout({
 
             <div className="shrink-0 space-y-3 border-t border-line px-6 py-5">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-ink-soft">小計</span>
-                <span className="font-serif text-[17px] text-ink">{formatTWD(subtotal)}</span>
+                <span className="text-ink-soft">{t.subtotal}</span>
+                <span className="font-serif text-[17px] text-ink">{formatTWD(subtotal, locale)}</span>
               </div>
-              <p className="text-xs text-ink-soft">運費將於結帳時計算</p>
+              <p className="text-xs text-ink-soft">{t.shippingCalcNote}</p>
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => setOpen(false)} className="iv-btn-ghost">
-                  繼續購物
+                  {t.continueShopping}
                 </button>
                 <Link href="/checkout" onClick={() => setOpen(false)} className="iv-btn-primary">
-                  前往結帳
+                  {t.proceedToCheckout}
                 </Link>
               </div>
               <Link
@@ -194,7 +199,7 @@ export default function CartFlyout({
                 onClick={() => setOpen(false)}
                 className="block text-center text-xs tracking-[0.04em] text-ink-soft underline underline-offset-2"
               >
-                查看完整購物車
+                {t.viewFullCart}
               </Link>
             </div>
           </>

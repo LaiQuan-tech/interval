@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cartSubtotal, clearCart, isPhysicalItem, readCart, type CartItem } from "@/lib/cart";
-import { formatTWD, PURCHASE_MODE_LABEL } from "@/lib/format";
+import { formatTWD, getPurchaseModeLabel } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
+import { useTranslations } from "@/lib/i18n/context";
 import type { CompanyProfile, ShippingConfig } from "@/lib/settings";
 
 const TAIWAN_COUNTIES = [
@@ -34,6 +35,8 @@ export default function CheckoutForm({
   cardPaymentAvailable: boolean;
 }) {
   const router = useRouter();
+  const { locale, messages } = useTranslations();
+  const t = messages.checkout;
   const [items, setItems] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -96,22 +99,22 @@ export default function CheckoutForm({
 
   function validate(): Record<string, string> {
     const e: Record<string, string> = {};
-    if (!contact.name.trim()) e.name = "請輸入姓名";
-    if (!EMAIL_RE.test(contact.email.trim())) e.email = "請輸入正確的 email";
-    if (!PHONE_RE.test(contact.phone.trim())) e.phone = "請輸入正確的手機號碼(09xxxxxxxx)";
+    if (!contact.name.trim()) e.name = t.errorName;
+    if (!EMAIL_RE.test(contact.email.trim())) e.email = t.errorEmail;
+    if (!PHONE_RE.test(contact.phone.trim())) e.phone = t.errorPhone;
 
     if (hasPhysical && effectiveShippingMethod === "home") {
-      if (!address.county) e.county = "請選擇縣市";
-      if (!address.district.trim()) e.district = "請輸入鄉鎮市區";
-      if (!address.detail.trim()) e.detail = "請輸入詳細地址";
+      if (!address.county) e.county = t.errorCounty;
+      if (!address.district.trim()) e.district = t.errorDistrict;
+      if (!address.detail.trim()) e.detail = t.errorDetail;
     }
 
     if (invoiceType === "personal" && carrier.trim() && !CARRIER_RE.test(carrier.trim())) {
-      e.carrier = "手機條碼格式錯誤,例:/ABC1234";
+      e.carrier = t.errorCarrier;
     }
     if (invoiceType === "company") {
-      if (!TAX_ID_RE.test(taxId.trim())) e.taxId = "統一編號須為 8 碼數字";
-      if (!companyTitle.trim()) e.companyTitle = "請輸入公司抬頭";
+      if (!TAX_ID_RE.test(taxId.trim())) e.taxId = t.errorTaxId;
+      if (!companyTitle.trim()) e.companyTitle = t.errorCompanyTitle;
     }
     return e;
   }
@@ -172,7 +175,7 @@ export default function CheckoutForm({
       });
       const data = await res.json();
       if (!res.ok || !data.orderToken) {
-        throw new Error(data.error ?? "訂單建立失敗，請再試一次");
+        throw new Error(data.error ?? t.orderCreateFailed);
       }
       if (data.redirectUrl) {
         window.location.href = data.redirectUrl;
@@ -181,7 +184,7 @@ export default function CheckoutForm({
       clearCart();
       router.push(`/orders/${data.orderToken}?created=1`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "訂單建立失敗，請再試一次");
+      setError(err instanceof Error ? err.message : t.orderCreateFailed);
       setSubmitting(false);
     }
   }
@@ -192,9 +195,9 @@ export default function CheckoutForm({
     return (
       <div className="lm-container py-14">
         <div className="iv-card flex flex-col items-center gap-4 py-14 text-center">
-          <p className="text-ink-soft">購物車是空的，先去逛逛吧！</p>
+          <p className="text-ink-soft">{t.emptyCart}</p>
           <Link href="/gallery" className="iv-btn-primary">
-            去逛逛典藏
+            {t.browseCollection}
           </Link>
         </div>
       </div>
@@ -203,15 +206,15 @@ export default function CheckoutForm({
 
   return (
     <div className="lm-container py-10 sm:py-16">
-      <h1 className="font-serif text-[26px] font-normal text-ink sm:text-[32px]">結帳</h1>
+      <h1 className="font-serif text-[26px] font-normal text-ink sm:text-[32px]">{t.title}</h1>
 
       <form onSubmit={submit} className="mt-8 grid gap-8 lg:grid-cols-[1fr_340px]">
         <div className="space-y-5">
           <section className="iv-card">
-            <h2 className="font-serif text-lg text-ink">聯絡資料</h2>
+            <h2 className="font-serif text-lg text-ink">{t.contactSection}</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="iv-label" htmlFor="name">姓名 *</label>
+                <label className="iv-label" htmlFor="name">{t.nameLabel}</label>
                 <input
                   id="name"
                   className="iv-input"
@@ -221,19 +224,19 @@ export default function CheckoutForm({
                 {errors.name && <p className="mt-1 text-xs text-danger">{errors.name}</p>}
               </div>
               <div>
-                <label className="iv-label" htmlFor="phone">電話 *</label>
+                <label className="iv-label" htmlFor="phone">{t.phoneLabel}</label>
                 <input
                   id="phone"
                   type="tel"
                   className="iv-input"
-                  placeholder="09xxxxxxxx"
+                  placeholder={t.phonePlaceholder}
                   value={contact.phone}
                   onChange={(e) => setContact({ ...contact, phone: e.target.value })}
                 />
                 {errors.phone && <p className="mt-1 text-xs text-danger">{errors.phone}</p>}
               </div>
               <div className="sm:col-span-2">
-                <label className="iv-label" htmlFor="email">Email *</label>
+                <label className="iv-label" htmlFor="email">{t.emailLabel}</label>
                 <input
                   id="email"
                   type="email"
@@ -248,11 +251,11 @@ export default function CheckoutForm({
 
           {hasPhysical && (
             <section className="iv-card">
-              <h2 className="font-serif text-lg text-ink">收件方式</h2>
+              <h2 className="font-serif text-lg text-ink">{t.shippingSection}</h2>
               <div className="mt-4 space-y-3">
                 {[
-                  { value: "home" as const, label: "宅配到府", desc: "運費依訂單金額計算" },
-                  { value: "pickup" as const, label: "門市自取", desc: "免運費,可至門市取貨" },
+                  { value: "home" as const, label: t.shippingHomeLabel, desc: t.shippingHomeDesc },
+                  { value: "pickup" as const, label: t.shippingPickupLabel, desc: t.shippingPickupDesc },
                 ].map((opt) => (
                   <label
                     key={opt.value}
@@ -279,14 +282,14 @@ export default function CheckoutForm({
               {shippingMethod === "home" ? (
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="iv-label" htmlFor="county">縣市 *</label>
+                    <label className="iv-label" htmlFor="county">{t.countyLabel}</label>
                     <select
                       id="county"
                       className="iv-input"
                       value={address.county}
                       onChange={(e) => setAddress({ ...address, county: e.target.value })}
                     >
-                      <option value="">請選擇</option>
+                      <option value="">{t.countyPlaceholder}</option>
                       {TAIWAN_COUNTIES.map((c) => (
                         <option key={c} value={c}>{c}</option>
                       ))}
@@ -294,7 +297,7 @@ export default function CheckoutForm({
                     {errors.county && <p className="mt-1 text-xs text-danger">{errors.county}</p>}
                   </div>
                   <div>
-                    <label className="iv-label" htmlFor="district">鄉鎮市區 *</label>
+                    <label className="iv-label" htmlFor="district">{t.districtLabel}</label>
                     <input
                       id="district"
                       className="iv-input"
@@ -304,7 +307,7 @@ export default function CheckoutForm({
                     {errors.district && <p className="mt-1 text-xs text-danger">{errors.district}</p>}
                   </div>
                   <div>
-                    <label className="iv-label" htmlFor="postal">郵遞區號</label>
+                    <label className="iv-label" htmlFor="postal">{t.postalLabel}</label>
                     <input
                       id="postal"
                       className="iv-input"
@@ -313,7 +316,7 @@ export default function CheckoutForm({
                     />
                   </div>
                   <div className="sm:col-span-2">
-                    <label className="iv-label" htmlFor="detail">詳細地址 *</label>
+                    <label className="iv-label" htmlFor="detail">{t.detailLabel}</label>
                     <input
                       id="detail"
                       className="iv-input"
@@ -326,7 +329,7 @@ export default function CheckoutForm({
               ) : (
                 <div className="mt-4 border border-line bg-panel p-4 text-sm">
                   <p className="font-medium text-ink">{company.name}</p>
-                  <p className="mt-1 text-ink-soft">{company.address || "門市地址請洽客服"}</p>
+                  <p className="mt-1 text-ink-soft">{company.address || t.pickupAddressFallback}</p>
                   <p className="mt-1 text-ink-soft">{company.hours || ""}</p>
                 </div>
               )}
@@ -334,11 +337,11 @@ export default function CheckoutForm({
           )}
 
           <section className="iv-card">
-            <h2 className="font-serif text-lg text-ink">發票</h2>
+            <h2 className="font-serif text-lg text-ink">{t.invoiceSection}</h2>
             <div className="mt-4 space-y-3">
               {[
-                { value: "personal" as const, label: "個人(雲端發票)" },
-                { value: "company" as const, label: "公司(統編發票)" },
+                { value: "personal" as const, label: t.invoicePersonalLabel },
+                { value: "company" as const, label: t.invoiceCompanyLabel },
               ].map((opt) => (
                 <label
                   key={opt.value}
@@ -361,11 +364,11 @@ export default function CheckoutForm({
 
             {invoiceType === "personal" ? (
               <div className="mt-4">
-                <label className="iv-label" htmlFor="carrier">手機條碼載具(選填)</label>
+                <label className="iv-label" htmlFor="carrier">{t.carrierLabel}</label>
                 <input
                   id="carrier"
                   className="iv-input"
-                  placeholder="/ABC1234"
+                  placeholder={t.carrierPlaceholder}
                   value={carrier}
                   onChange={(e) => setCarrier(e.target.value)}
                 />
@@ -374,7 +377,7 @@ export default function CheckoutForm({
             ) : (
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="iv-label" htmlFor="taxId">統一編號 *</label>
+                  <label className="iv-label" htmlFor="taxId">{t.taxIdLabel}</label>
                   <input
                     id="taxId"
                     className="iv-input"
@@ -385,7 +388,7 @@ export default function CheckoutForm({
                   {errors.taxId && <p className="mt-1 text-xs text-danger">{errors.taxId}</p>}
                 </div>
                 <div>
-                  <label className="iv-label" htmlFor="companyTitle">公司抬頭 *</label>
+                  <label className="iv-label" htmlFor="companyTitle">{t.companyTitleLabel}</label>
                   <input
                     id="companyTitle"
                     className="iv-input"
@@ -401,17 +404,17 @@ export default function CheckoutForm({
           </section>
 
           <section className="iv-card">
-            <h2 className="font-serif text-lg text-ink">付款方式</h2>
+            <h2 className="font-serif text-lg text-ink">{t.paymentSection}</h2>
             <div className="mt-4 space-y-3">
               {[
-                { value: "bank_transfer" as const, label: "銀行轉帳", desc: "訂單成立後提供匯款帳號" },
-                { value: "cod" as const, label: "貨到付款", desc: "收到商品時付款" },
+                { value: "bank_transfer" as const, label: t.paymentBankLabel, desc: t.paymentBankDesc },
+                { value: "cod" as const, label: t.paymentCodLabel, desc: t.paymentCodDesc },
                 ...(cardPaymentAvailable
                   ? [
                       {
                         value: "card" as const,
-                        label: "信用卡 / ATM / 超商代碼",
-                        desc: "由 PChomePay 支付連提供,送出後將導向收銀台",
+                        label: t.paymentCardLabel,
+                        desc: t.paymentCardDesc,
                       },
                     ]
                   : []),
@@ -441,9 +444,15 @@ export default function CheckoutForm({
 
           {showPoints && (
             <section className="iv-card">
-              <h2 className="font-serif text-lg text-ink">點數折抵</h2>
+              <h2 className="font-serif text-lg text-ink">{t.pointsSection}</h2>
               <p className="mt-1 text-sm text-ink-soft">
-                目前可用 <span className="font-semibold text-accent">{pointsBalance.toLocaleString("zh-TW")}</span> 點，1 點折抵 NT$1，最多可折抵 {formatTWD(maxRedeemable)}。
+                {t.pointsAvailablePrefix}
+                <span className="font-semibold text-accent">
+                  {pointsBalance.toLocaleString(locale === "en" ? "en-US" : "zh-TW")}
+                </span>
+                {t.pointsAvailableMid}
+                {formatTWD(maxRedeemable, locale)}
+                {t.pointsAvailableSuffix}
               </p>
               <div className="mt-3 flex items-center gap-3">
                 <input
@@ -459,18 +468,18 @@ export default function CheckoutForm({
                   onClick={() => setPointsInput(String(maxRedeemable))}
                   className="text-sm tracking-[0.04em] text-accent border-b border-gold pb-0.5"
                 >
-                  全部折抵
+                  {t.redeemAll}
                 </button>
               </div>
             </section>
           )}
 
           <section className="iv-card">
-            <h2 className="font-serif text-lg text-ink">備註</h2>
+            <h2 className="font-serif text-lg text-ink">{t.noteSection}</h2>
             <textarea
               rows={3}
               className="iv-input mt-4 min-h-24"
-              placeholder="有什麼想告訴我們的嗎？(選填)"
+              placeholder={t.notePlaceholder}
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />
@@ -478,54 +487,54 @@ export default function CheckoutForm({
         </div>
 
         <div className="iv-card h-fit lg:sticky lg:top-24">
-          <h2 className="font-serif text-lg text-ink">訂單摘要</h2>
+          <h2 className="font-serif text-lg text-ink">{t.summaryTitle}</h2>
           <ul className="mt-4 space-y-2 text-sm">
             {items.map((i) => (
               <li key={`${i.productId}-${i.mode}`} className="flex justify-between gap-2">
                 <span className="line-clamp-1 text-ink-soft">
                   {i.name}
                   <span className="ml-1 text-[11px] text-accent">
-                    ({PURCHASE_MODE_LABEL[i.mode] ?? i.mode})
+                    ({getPurchaseModeLabel(i.mode, locale)})
                   </span>
                   {" "}× {i.quantity}
                 </span>
-                <span className="shrink-0">{formatTWD(i.price * i.quantity)}</span>
+                <span className="shrink-0">{formatTWD(i.price * i.quantity, locale)}</span>
               </li>
             ))}
           </ul>
           <div className="mt-4 space-y-1.5 border-t border-line pt-4 text-sm">
             <div className="flex justify-between">
-              <span className="text-ink-soft">小計</span>
-              <span>{formatTWD(subtotal)}</span>
+              <span className="text-ink-soft">{t.subtotal}</span>
+              <span>{formatTWD(subtotal, locale)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-ink-soft">運費</span>
+              <span className="text-ink-soft">{t.shippingFee}</span>
               <span>
                 {!hasPhysical
-                  ? "無需配送"
+                  ? t.shippingNone
                   : effectiveShippingMethod === "pickup"
-                    ? "免運(門市自取)"
+                    ? t.shippingFreePickup
                     : shippingFee === 0
-                      ? "免運"
-                      : formatTWD(shippingFee)}
+                      ? t.shippingFree
+                      : formatTWD(shippingFee, locale)}
               </span>
             </div>
             {pointsUsed > 0 && (
               <div className="flex justify-between text-accent">
-                <span>點數折抵</span>
-                <span>-{formatTWD(pointsUsed)}</span>
+                <span>{t.pointsDiscount}</span>
+                <span>-{formatTWD(pointsUsed, locale)}</span>
               </div>
             )}
           </div>
           <div className="mt-3 flex justify-between border-t border-line pt-3 font-medium">
-            <span>合計</span>
-            <span className="font-serif text-[18px] text-ink">{formatTWD(total)}</span>
+            <span>{t.total}</span>
+            <span className="font-serif text-[18px] text-ink">{formatTWD(total, locale)}</span>
           </div>
           {error && (
             <p className="mt-3 rounded-[2px] bg-danger-soft p-3 text-sm text-danger">{error}</p>
           )}
           <button type="submit" disabled={submitting} className="iv-btn-primary mt-5 w-full">
-            {submitting ? "建立訂單中…" : "送出訂單"}
+            {submitting ? t.submitting : t.submit}
           </button>
         </div>
       </form>

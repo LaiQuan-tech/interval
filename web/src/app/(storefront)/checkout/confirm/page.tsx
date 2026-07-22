@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { clearCart } from "@/lib/cart";
+import { useTranslations } from "@/lib/i18n/context";
 
 // PChomePay 導回頁(return_url)。PChomePay 導回時不帶任何參數,所以 return_url 本身在
 // 建立付款時就已經附上 ?order=<order_no>(見 lib/payments/pchomepay.ts pchomepayReturnUrl)。
@@ -24,6 +25,8 @@ const POLL_INTERVAL_MS = 3000;
 const MAX_ATTEMPTS = 40; // 40 * 3s = 120s
 
 export default function CheckoutConfirmPage() {
+  const { messages } = useTranslations();
+  const t = messages.checkout.confirm;
   const [view, setView] = useState<ViewState>("checking");
   const [orderNo, setOrderNo] = useState<string | null>(null);
   const attemptsRef = useRef(0);
@@ -103,32 +106,30 @@ export default function CheckoutConfirmPage() {
               aria-hidden
               className="h-8 w-8 animate-spin rounded-full border-2 border-line-2 border-t-gold"
             />
-            <h1 className="font-serif text-xl text-ink">確認付款結果中…</h1>
-            <p className="text-sm text-ink-soft">
-              請稍候,我們正在向金流商確認您的付款狀態,請勿關閉此頁面。
-            </p>
+            <h1 className="font-serif text-xl text-ink">{t.checkingTitle}</h1>
+            <p className="text-sm text-ink-soft">{t.checkingDesc}</p>
           </>
         )}
 
         {view === "paid" && (
           <>
-            <h1 className="font-serif text-xl text-ink">付款成功!</h1>
+            <h1 className="font-serif text-xl text-ink">{t.paidTitle}</h1>
             <p className="text-sm text-ink-soft">
-              訂單 {orderNo},確認信已寄至您的信箱(內含訂單查詢連結)。
+              {t.paidDescPrefix}{orderNo}{t.paidDescSuffix}
             </p>
             <Link href="/account" className="iv-btn-primary mt-2">
-              查看我的帳戶
+              {t.viewAccount}
             </Link>
           </>
         )}
 
         {view === "failed" && (
           <>
-            <h1 className="font-serif text-xl text-ink">付款未完成</h1>
-            <p className="text-sm text-ink-soft">付款未完成,請重新下單或與我們聯繫。</p>
+            <h1 className="font-serif text-xl text-ink">{t.failedTitle}</h1>
+            <p className="text-sm text-ink-soft">{t.failedDesc}</p>
             <div className="mt-2 flex flex-wrap justify-center gap-3">
               <Link href="/checkout" className="iv-btn-primary">
-                重新結帳
+                {t.retryCheckout}
               </Link>
             </div>
           </>
@@ -136,22 +137,22 @@ export default function CheckoutConfirmPage() {
 
         {view === "timeout" && (
           <>
-            <h1 className="font-serif text-xl text-ink">尚未收到付款結果</h1>
-            <p className="text-sm text-ink-soft">
-              付款確認中,若已完成付款請稍候或查看信箱(確認信會附上訂單查詢連結)。
-            </p>
+            <h1 className="font-serif text-xl text-ink">{t.timeoutTitle}</h1>
+            <p className="text-sm text-ink-soft">{t.timeoutDesc}</p>
           </>
         )}
 
         {view === "not_found" && (
           <>
-            <h1 className="font-serif text-xl text-ink">找不到這筆訂單</h1>
+            <h1 className="font-serif text-xl text-ink">{t.notFoundTitle}</h1>
             <p className="text-sm text-ink-soft">
-              {orderNo ? `訂單編號 ${orderNo} 查無資料,` : "連結缺少訂單資訊,"}
-              請確認連結是否正確,或聯繫客服協助。
+              {orderNo
+                ? `${t.notFoundWithOrderPrefix}${orderNo}${t.notFoundWithOrderSuffix}`
+                : t.notFoundNoOrder}
+              {" "}{t.notFoundHelp}
             </p>
             <Link href="/checkout" className="iv-btn-primary mt-2">
-              回結帳頁
+              {t.backToCheckout}
             </Link>
           </>
         )}

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -8,26 +9,25 @@ import {
   formatDateTime,
   formatTWD,
   formatPoints,
-  ORDER_STATUS_LABEL,
-  QUOTE_STATUS_LABEL,
+  getOrderStatusLabel,
+  getQuoteStatusLabel,
 } from "@/lib/format";
 import ProfileForm from "@/components/ProfileForm";
 import LogoutButton from "@/components/LogoutButton";
+import { getLocale, getMessages } from "@/lib/i18n/server";
 import type { Order, Profile, Quote } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "會員中心" };
 
-const POINTS_SOURCE_LABEL: Record<string, string> = {
-  earn: "消費回饋",
-  redeem: "訂單折抵",
-  expire: "點數到期",
-  refund: "取消退回",
-  manual_adjust: "後台調整",
-  promo: "活動贈點",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const messages = getMessages(await getLocale());
+  return { title: messages.account.title };
+}
 
 export default async function AccountPage() {
+  const locale = await getLocale();
+  const messages = getMessages(locale);
+  const t = messages.account;
   const supabase = await createClient();
   const {
     data: { user },
@@ -64,34 +64,36 @@ export default async function AccountPage() {
     <div className="lm-container max-w-190 py-10 sm:py-16">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-serif text-[26px] font-normal text-ink sm:text-[32px]">會員中心</h1>
+          <h1 className="font-serif text-[26px] font-normal text-ink sm:text-[32px]">{t.title}</h1>
           <p className="mt-1 text-sm text-ink-soft">{user.email}</p>
         </div>
-        <LogoutButton />
+        <LogoutButton locale={locale} />
       </div>
 
       {/* 會員等級與點數 */}
       <section className="mt-8 grid gap-4 sm:grid-cols-2">
         <div className="border border-gold bg-ink-deep p-6 text-panel">
           <div className="lm-caption text-[12px]">Membership</div>
-          <div className="mt-2 font-serif text-[24px]">{tier?.name ?? "尚未入會"}</div>
+          <div className="mt-2 font-serif text-[24px]">{tier?.name ?? t.notMember}</div>
           {tier ? (
             <p className="mt-2 text-[13px] text-cream-soft">
-              每消費 NT$100 累積 {tier.rebate_rate} 點
+              {t.tierRatePrefix}{tier.rebate_rate}{t.tierRateSuffix}
             </p>
           ) : (
             <Link href="/membership" className="mt-3 inline-block text-[13px] tracking-[0.06em] text-gold-bright border-b border-gold pb-0.5">
-              了解會員方案 →
+              {t.learnMembership}
             </Link>
           )}
         </div>
         <div className="border border-line bg-card p-6">
           <div className="lm-caption text-[12px]">Points Balance</div>
-          <div className="mt-2 font-cormorant text-[34px] text-gold">{points.balance.toLocaleString("zh-TW")}</div>
+          <div className="mt-2 font-cormorant text-[34px] text-gold">
+            {points.balance.toLocaleString(locale === "en" ? "en-US" : "zh-TW")}
+          </div>
           <p className="mt-1 text-[13px] text-ink-soft">
             {points.expiringSoon > 0
-              ? `其中 ${formatPoints(points.expiringSoon)} 將於 30 天內到期`
-              : "目前無即將到期的點數"}
+              ? `${t.pointsExpiringPrefix}${formatPoints(points.expiringSoon, locale)}${t.pointsExpiringSuffix}`
+              : t.pointsNoneExpiring}
           </p>
         </div>
       </section>
@@ -99,17 +101,19 @@ export default async function AccountPage() {
       {/* 點數明細 */}
       {ledger.length > 0 && (
         <section className="mt-8">
-          <h2 className="mb-3 font-serif text-lg text-ink">點數明細</h2>
+          <h2 className="mb-3 font-serif text-lg text-ink">{t.pointsHistoryTitle}</h2>
           <div className="iv-card divide-y divide-line !p-0">
             {ledger.map((entry) => (
               <div key={entry.id} className="flex items-center justify-between gap-3 px-5 py-3.5 text-sm">
                 <div>
-                  <div className="text-ink">{POINTS_SOURCE_LABEL[entry.source] ?? entry.source}</div>
-                  <div className="mt-0.5 text-xs text-muted-2">{formatDateTime(entry.created_at)}</div>
+                  <div className="text-ink">
+                    {t.pointsSource[entry.source as keyof typeof t.pointsSource] ?? entry.source}
+                  </div>
+                  <div className="mt-0.5 text-xs text-muted-2">{formatDateTime(entry.created_at, locale)}</div>
                 </div>
                 <div className={`font-cormorant text-[17px] ${entry.delta >= 0 ? "text-accent" : "text-ink-soft"}`}>
                   {entry.delta >= 0 ? "+" : ""}
-                  {entry.delta.toLocaleString("zh-TW")}
+                  {entry.delta.toLocaleString(locale === "en" ? "en-US" : "zh-TW")}
                 </div>
               </div>
             ))}
@@ -119,12 +123,12 @@ export default async function AccountPage() {
 
       {/* 訂單 */}
       <section className="mt-8">
-        <h2 className="mb-3 font-serif text-lg text-ink">我的訂單</h2>
+        <h2 className="mb-3 font-serif text-lg text-ink">{t.ordersTitle}</h2>
         {typedOrders.length === 0 ? (
           <div className="iv-card flex items-center justify-between text-sm text-ink-soft">
-            <span>還沒有訂單</span>
+            <span>{t.ordersEmpty}</span>
             <Link href="/gallery" className="font-semibold text-accent">
-              去逛逛 →
+              {t.goBrowse}
             </Link>
           </div>
         ) : (
@@ -137,12 +141,12 @@ export default async function AccountPage() {
               >
                 <div>
                   <div className="font-semibold text-ink">{o.order_no}</div>
-                  <div className="mt-0.5 text-xs text-ink-soft">{formatDate(o.created_at)}</div>
+                  <div className="mt-0.5 text-xs text-ink-soft">{formatDate(o.created_at, locale)}</div>
                 </div>
                 <div className="text-right">
-                  <div className="font-serif text-ink">{formatTWD(o.total)}</div>
+                  <div className="font-serif text-ink">{formatTWD(o.total, locale)}</div>
                   <div className="mt-0.5 text-xs text-ink-soft">
-                    {ORDER_STATUS_LABEL[o.status] ?? o.status}
+                    {getOrderStatusLabel(o.status, locale)}
                   </div>
                 </div>
               </Link>
@@ -154,7 +158,7 @@ export default async function AccountPage() {
       {/* 報價 */}
       {typedQuotes.length > 0 && (
         <section className="mt-8">
-          <h2 className="mb-3 font-serif text-lg text-ink">我的報價單</h2>
+          <h2 className="mb-3 font-serif text-lg text-ink">{t.quotesTitle}</h2>
           <div className="space-y-3">
             {typedQuotes.map((q) => (
               <Link
@@ -164,12 +168,12 @@ export default async function AccountPage() {
               >
                 <div>
                   <div className="font-semibold text-ink">{q.quote_no}</div>
-                  <div className="mt-0.5 text-xs text-ink-soft">{formatDate(q.created_at)}</div>
+                  <div className="mt-0.5 text-xs text-ink-soft">{formatDate(q.created_at, locale)}</div>
                 </div>
                 <div className="text-right">
-                  <div className="font-serif text-ink">{formatTWD(q.total)}</div>
+                  <div className="font-serif text-ink">{formatTWD(q.total, locale)}</div>
                   <div className="mt-0.5 text-xs text-ink-soft">
-                    {QUOTE_STATUS_LABEL[q.status] ?? q.status}
+                    {getQuoteStatusLabel(q.status, locale)}
                   </div>
                 </div>
               </Link>
@@ -180,7 +184,7 @@ export default async function AccountPage() {
 
       {/* 個人資料 */}
       <section className="mt-8">
-        <h2 className="mb-3 font-serif text-lg text-ink">個人資料</h2>
+        <h2 className="mb-3 font-serif text-lg text-ink">{t.profileTitle}</h2>
         <ProfileForm
           initial={{
             name: typedProfile?.name ?? "",

@@ -2,21 +2,26 @@
 
 import { useState } from "react";
 import { createBooking } from "@/lib/bookings";
+import { useTranslations } from "@/lib/i18n/context";
 
 // 注意:BOOKING_PURPOSES 在 lib/bookings.ts 內與 server action 同檔("use server"),
 // 該檔案的匯出僅能是 async function,無法把純常數陣列匯出給 client component 使用
 // (會在 next build 造成 prerender 錯誤),因此在此複製一份同值常數,不變動 lib/。
-const BOOKING_PURPOSES = ["鑑賞畫作", "租賃 · 買斷", "規劃旅程", "入會諮詢"] as const;
-
-const TIME_SLOTS = ["上午 11:00 – 13:00", "下午 14:00 – 16:00", "傍晚 17:00 – 19:00"];
+// slug 只在本檔追蹤選取狀態與當 React key;送出 DB 的值一律用當前 locale 對應的
+// messages.booking.purposes[slug] 文字本身(zh 時與改動前逐字相同)。
+const BOOKING_PURPOSE_SLUGS = ["appreciate", "rental", "journey", "membership"] as const;
+type BookingPurposeSlug = (typeof BOOKING_PURPOSE_SLUGS)[number];
 
 export default function BookingForm() {
+  const { locale, messages: t } = useTranslations();
+  const TIME_SLOTS = [t.booking.timeSlots.morning, t.booking.timeSlots.afternoon, t.booking.timeSlots.evening];
+
   const [form, setForm] = useState({
     name: "",
     email: "",
     phone: "",
     partySize: "",
-    purpose: BOOKING_PURPOSES[0] as string,
+    purpose: BOOKING_PURPOSE_SLUGS[0] as BookingPurposeSlug,
     visitDate: "",
     timeSlot: TIME_SLOTS[0],
     message: "",
@@ -32,19 +37,22 @@ export default function BookingForm() {
     setSubmitting(true);
 
     const noteLines = [
-      form.partySize && `預約人數：${form.partySize}`,
-      form.timeSlot && `期望時段：${form.timeSlot}`,
+      form.partySize && `${t.booking.partyNotePrefix}${form.partySize}`,
+      form.timeSlot && `${t.booking.slotNotePrefix}${form.timeSlot}`,
       form.message,
     ].filter(Boolean);
 
-    const result = await createBooking({
-      name: form.name,
-      email: form.email,
-      phone: form.phone,
-      visit_date: form.visitDate,
-      purpose: form.purpose,
-      message: noteLines.join("\n"),
-    });
+    const result = await createBooking(
+      {
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        visit_date: form.visitDate,
+        purpose: t.booking.purposes[form.purpose],
+        message: noteLines.join("\n"),
+      },
+      locale
+    );
 
     setSubmitting(false);
     if (!result.ok) {
@@ -57,11 +65,11 @@ export default function BookingForm() {
   return (
     <form onSubmit={submit} className="flex flex-col gap-5.5">
       <div>
-        <label className="iv-label" htmlFor="b-name">稱謂 · 姓名</label>
+        <label className="iv-label" htmlFor="b-name">{t.booking.nameLabel}</label>
         <input
           id="b-name"
           required
-          placeholder="王夫人"
+          placeholder={t.booking.namePlaceholder}
           className="iv-input"
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -69,7 +77,7 @@ export default function BookingForm() {
       </div>
 
       <div>
-        <label className="iv-label" htmlFor="b-email">Email</label>
+        <label className="iv-label" htmlFor="b-email">{t.booking.emailLabel}</label>
         <input
           id="b-email"
           type="email"
@@ -83,20 +91,20 @@ export default function BookingForm() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label className="iv-label" htmlFor="b-phone">聯絡電話</label>
+          <label className="iv-label" htmlFor="b-phone">{t.booking.phoneLabel}</label>
           <input
             id="b-phone"
-            placeholder="0900 000 000"
+            placeholder={t.booking.phonePlaceholder}
             className="iv-input"
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
           />
         </div>
         <div>
-          <label className="iv-label" htmlFor="b-party">預約人數</label>
+          <label className="iv-label" htmlFor="b-party">{t.booking.partyLabel}</label>
           <input
             id="b-party"
-            placeholder="2"
+            placeholder={t.booking.partyPlaceholder}
             className="iv-input"
             value={form.partySize}
             onChange={(e) => setForm({ ...form, partySize: e.target.value })}
@@ -105,17 +113,17 @@ export default function BookingForm() {
       </div>
 
       <div>
-        <label className="iv-label">參訪目的</label>
+        <label className="iv-label">{t.booking.purposeLabel}</label>
         <div className="flex flex-wrap gap-2.5">
-          {BOOKING_PURPOSES.map((p) => (
+          {BOOKING_PURPOSE_SLUGS.map((slug) => (
             <button
               type="button"
-              key={p}
-              onClick={() => setForm({ ...form, purpose: p })}
-              data-active={form.purpose === p}
+              key={slug}
+              onClick={() => setForm({ ...form, purpose: slug })}
+              data-active={form.purpose === slug}
               className="lm-chip"
             >
-              {p}
+              {t.booking.purposes[slug]}
             </button>
           ))}
         </div>
@@ -123,7 +131,7 @@ export default function BookingForm() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label className="iv-label" htmlFor="b-date">期望日期</label>
+          <label className="iv-label" htmlFor="b-date">{t.booking.dateLabel}</label>
           <input
             id="b-date"
             type="date"
@@ -133,7 +141,7 @@ export default function BookingForm() {
           />
         </div>
         <div>
-          <label className="iv-label" htmlFor="b-slot">期望時段</label>
+          <label className="iv-label" htmlFor="b-slot">{t.booking.slotLabel}</label>
           <select
             id="b-slot"
             className="iv-input"
@@ -148,11 +156,11 @@ export default function BookingForm() {
       </div>
 
       <div>
-        <label className="iv-label" htmlFor="b-message">備註</label>
+        <label className="iv-label" htmlFor="b-message">{t.booking.messageLabel}</label>
         <textarea
           id="b-message"
           rows={3}
-          placeholder="想鑑賞的作品風格、旅程偏好或其他需求"
+          placeholder={t.booking.messagePlaceholder}
           className="iv-input resize-y"
           value={form.message}
           onChange={(e) => setForm({ ...form, message: e.target.value })}
@@ -168,7 +176,7 @@ export default function BookingForm() {
         disabled={submitting || submitted}
         className="iv-btn-primary mt-2 w-full"
       >
-        {submitted ? "已收到您的預約，我們將盡快聯繫 ✓" : submitting ? "送出中…" : "送出預約"}
+        {submitted ? t.booking.submitted : submitting ? t.booking.submitting : t.booking.submit}
       </button>
     </form>
   );

@@ -4,18 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import type { ChatMessage } from "@/lib/types";
 import { resizeToJpeg, type PendingImage } from "@/lib/image";
-
-const SUGGESTIONS = [
-  "有哪些作品可以租賃或買斷?",
-  "私人旅程怎麼規劃?",
-  "會員點數怎麼累積?",
-];
-
-// 居家擺放模擬入口說明:與 web/src/lib/ai.ts 的 MOCKUP_ENTRY_HINT 是同義的另一份文案。
-// 這裡是 client 元件,刻意不 import ai.ts(那邊有 fetch/Gemini 呼叫邏輯,import 進來會整包
-// 打進 client bundle),所以獨立維護一份——改動任一邊都要回頭同步對方。
-const MOCKUP_ENTRY_HINT =
-  "想看看作品掛在家裡的樣子，到該作品的商品頁點「先看看掛在我家的樣子」，用示範空間或上傳照片，約 30 秒就能生成模擬圖；也可以直接點下方 📷 上傳。";
+import { useTranslations } from "@/lib/i18n/context";
 
 // widget 內部訊息:在 ChatMessage 之上加 UI 專用欄位(不回傳給後端)
 type WidgetMessage = ChatMessage & {
@@ -44,11 +33,14 @@ function toApiHistory(messages: WidgetMessage[]): ChatMessage[] {
 
 export default function ChatWidget() {
   const pathname = usePathname();
+  // 這個元件自己的對話陣列 state 也叫 messages,與 useTranslations() 回傳的
+  // messages(i18n 字典)撞名——這裡刻意重新命名成 t,其餘元件沒有這個問題不需要跟進。
+  const { messages: t } = useTranslations();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<WidgetMessage[]>([
     {
       role: "assistant",
-      content: `您好，我是好日子的智慧客服顧問！想了解藝術典藏、租賃買斷、私人旅程或會員制度，都可以直接問我。${MOCKUP_ENTRY_HINT}`,
+      content: `${t.chat.greeting}${t.chat.mockupEntryHint}`,
     },
   ]);
   const [input, setInput] = useState("");
@@ -141,7 +133,7 @@ export default function ChatWidget() {
                 {
                   role: "assistant",
                   kind: "quote-card",
-                  content: "專屬報價單準備中，確認後將寄至您的信箱 ✓",
+                  content: t.chat.quotePending,
                 },
               ]);
             }
@@ -155,7 +147,7 @@ export default function ChatWidget() {
         ...m,
         {
           role: "assistant",
-          content: "抱歉，系統忙碌中，請稍後再試，或直接到藝術典藏頁逛逛！",
+          content: t.chat.busyFallback,
         },
       ]);
     } finally {
@@ -192,7 +184,7 @@ export default function ChatWidget() {
       }
       setSelectedSlug(preselect || list[0]?.slug || "");
     } catch {
-      setMockupError("這張圖片無法讀取，請換一張再試。");
+      setMockupError(t.chat.imageUnreadable);
     }
   }
 
@@ -215,7 +207,7 @@ export default function ChatWidget() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.ok) {
-        throw new Error(data?.error || "生成失敗");
+        throw new Error(data?.error || t.chat.mockupGenericFail);
       }
 
       setMessages((m) => [
@@ -232,9 +224,9 @@ export default function ChatWidget() {
       setSelectedSlug("");
     } catch (err) {
       setMockupError(
-        err instanceof Error && err.message !== "生成失敗"
+        err instanceof Error && err.message !== t.chat.mockupGenericFail
           ? err.message
-          : "模擬圖生成失敗，可能是網路忙碌，請再試一次。"
+          : t.chat.mockupFailRetry
       );
     } finally {
       setMockupLoading(false);
@@ -244,8 +236,12 @@ export default function ChatWidget() {
   return (
     <>
       {/* FAB */}
+      {/* data-chat-fab:與翻譯無關的穩定選擇器。OpenChatButton/RoomMockupFlyout 靠 DOM 事件
+          解耦點開這顆按鈕,若只靠 aria-label 選取,aria-label 一旦 i18n 化,/en 站就會選不到
+          (aria-label 本身仍照常 i18n,只是不再拿它當選擇器)。*/}
       <button
-        aria-label={open ? "關閉客服" : "開啟智慧客服"}
+        data-chat-fab
+        aria-label={open ? t.chat.fabClose : t.chat.fabOpen}
         onClick={() => setOpen(!open)}
         className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-ink-deep text-cream-text shadow-lg shadow-ink-deep/30 transition-transform hover:scale-105"
       >
@@ -266,11 +262,11 @@ export default function ChatWidget() {
         <div className="fixed inset-x-3 bottom-22 z-50 flex max-h-[72dvh] flex-col overflow-hidden rounded-2xl border border-line bg-card shadow-2xl sm:inset-x-auto sm:right-5 sm:w-95">
           <div className="flex items-center gap-3 bg-ink-deep px-4 py-3 text-cream-text">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gold text-sm font-bold text-ink-deep">
-              小
+              {t.chat.panelAvatar}
             </div>
             <div>
-              <div className="text-sm font-semibold">好日子智慧客服</div>
-              <div className="text-xs text-cream-soft">AI 顧問 · 擺放模擬 · 自動報價</div>
+              <div className="text-sm font-semibold">{t.chat.panelTitle}</div>
+              <div className="text-xs text-cream-soft">{t.chat.panelSubtitle}</div>
             </div>
           </div>
 
@@ -296,7 +292,7 @@ export default function ChatWidget() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={m.imageUrl}
-                      alt={m.role === "user" ? "上傳的空間照片" : "擺放模擬圖"}
+                      alt={m.role === "user" ? t.chat.uploadedRoomPhotoAlt : t.chat.mockupImageAlt}
                       className="mb-2 w-full cursor-zoom-in rounded-xl"
                       onClick={() => window.open(m.imageUrl, "_blank", "noopener")}
                     />
@@ -307,12 +303,12 @@ export default function ChatWidget() {
             )}
             {loading && messages[messages.length - 1]?.role === "user" && (
               <div className="max-w-[85%] rounded-2xl bg-panel px-3.5 py-2.5 text-sm text-ink-soft">
-                正在輸入…
+                {t.chat.typing}
               </div>
             )}
             {messages.length === 1 && (
               <div className="flex flex-wrap gap-2 pt-1">
-                {SUGGESTIONS.map((s) => (
+                {[t.chat.suggestion1, t.chat.suggestion2, t.chat.suggestion3].map((s) => (
                   <button
                     key={s}
                     onClick={() => send(s)}
@@ -334,14 +330,14 @@ export default function ChatWidget() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={pendingImage.dataUrl}
-                    alt="空間照片預覽"
+                    alt={t.chat.roomPreviewAlt}
                     className="h-14 w-14 shrink-0 rounded-[2px] object-cover opacity-70"
                   />
                   <div className="flex-1 text-xs text-ink-soft">
                     <div className="animate-pulse font-medium text-accent">
-                      正在為您把作品掛上牆…
+                      {t.chat.hangingInProgress}
                     </div>
-                    <div className="mt-1">約需 15–30 秒，請稍候片刻。</div>
+                    <div className="mt-1">{t.chat.hangingWait}</div>
                   </div>
                 </div>
               ) : (
@@ -350,14 +346,14 @@ export default function ChatWidget() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={pendingImage.dataUrl}
-                      alt="空間照片預覽"
+                      alt={t.chat.roomPreviewAlt}
                       className="h-14 w-14 shrink-0 rounded-[2px] object-cover"
                     />
                     <div className="flex-1 pt-0.5 text-xs text-ink-soft">
-                      選擇想掛上牆的作品，我來為您生成擺放模擬圖。
+                      {t.chat.pickArtworkHint}
                     </div>
                     <button
-                      aria-label="取消上傳"
+                      aria-label={t.chat.cancelUpload}
                       onClick={() => {
                         setPendingImage(null);
                         setSelectedSlug("");
@@ -401,7 +397,7 @@ export default function ChatWidget() {
                     disabled={!selectedSlug}
                     className="iv-btn-primary w-full text-xs"
                   >
-                    生成擺放模擬
+                    {t.chat.generateMockup}
                   </button>
                 </>
               )}
@@ -424,8 +420,8 @@ export default function ChatWidget() {
             />
             <button
               type="button"
-              aria-label="上傳空間照片生成擺放模擬"
-              title="上傳您家的照片，生成作品擺放模擬圖"
+              aria-label={t.chat.uploadAria}
+              title={t.chat.uploadTitle}
               onClick={() => fileInputRef.current?.click()}
               disabled={loading || mockupLoading}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-2 bg-card text-lg transition-colors hover:border-gold disabled:opacity-40"
@@ -435,13 +431,13 @@ export default function ChatWidget() {
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="輸入訊息…"
+              placeholder={t.chat.inputPlaceholder}
               className="min-h-11 min-w-0 flex-1 rounded-full border border-line bg-paper px-4 text-sm outline-none focus:border-gold"
             />
             <button
               type="submit"
               disabled={loading || !input.trim()}
-              aria-label="送出"
+              aria-label={t.chat.send}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink-deep text-cream-text disabled:opacity-40"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

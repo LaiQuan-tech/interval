@@ -2,18 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { formatTWD } from "@/lib/format";
+import { formatTWD, getPurchaseModeLabel } from "@/lib/format";
 import { resizeToJpeg, type PendingImage } from "@/lib/image";
 import Placeholder, { gradientForId } from "@/components/Placeholder";
 import QuickAddButton from "@/components/QuickAddButton";
+import { useTranslations } from "@/lib/i18n/context";
 import type { Product } from "@/lib/types";
 
-// 4 個示範空間(白名單與圖檔見 web/src/app/api/chat/mockup/route.ts、public/rooms/)
-const DEMO_ROOMS: { slug: string; label: string }[] = [
-  { slug: "living-nordic", label: "北歐風客廳" },
-  { slug: "dining-warm-wood", label: "溫木質餐廳" },
-  { slug: "bedroom-minimal", label: "極簡臥室" },
-  { slug: "study-quiet", label: "靜謐書房" },
+// 4 個示範空間(白名單與圖檔見 web/src/app/api/chat/mockup/route.ts、public/rooms/)。
+// key 對應 messages.mockup.demoRooms 的 key。
+const DEMO_ROOMS: { slug: string; key: "livingNordic" | "diningWarmWood" | "bedroomMinimal" | "studyQuiet" }[] = [
+  { slug: "living-nordic", key: "livingNordic" },
+  { slug: "dining-warm-wood", key: "diningWarmWood" },
+  { slug: "bedroom-minimal", key: "bedroomMinimal" },
+  { slug: "study-quiet", key: "studyQuiet" },
 ];
 
 type Step = "pick" | "loading" | "result";
@@ -36,6 +38,7 @@ export default function RoomMockupFlyout({
   onClose: () => void;
   product: Product;
 }) {
+  const { locale, messages } = useTranslations();
   const [step, setStep] = useState<Step>("pick");
   const [selectedDemo, setSelectedDemo] = useState("");
   const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
@@ -102,7 +105,7 @@ export default function RoomMockupFlyout({
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.ok) {
-        throw new Error(data?.error || "模擬圖生成失敗,可能是網路忙碌,請稍後再試一次。");
+        throw new Error(data?.error || messages.mockup.failRetry);
       }
       setResult({
         mockupUrl: data.mockupUrl,
@@ -112,9 +115,7 @@ export default function RoomMockupFlyout({
       });
       setStep("result");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "模擬圖生成失敗,可能是網路忙碌,請稍後再試一次。"
-      );
+      setError(err instanceof Error ? err.message : messages.mockup.failRetry);
       setStep("pick");
     }
   }
@@ -136,14 +137,14 @@ export default function RoomMockupFlyout({
       setSelectedDemo("");
       generateMockup({ image: { mime: resized.mime, base64: resized.base64 } });
     } catch {
-      setError("這張圖片無法讀取,請換一張再試。");
+      setError(messages.mockup.imageUnreadable);
     }
   }
 
+  // 用 data-chat-fab(與翻譯無關的穩定屬性)找 ChatWidget 的 FAB,不要用 aria-label——
+  // aria-label 會依語言 i18n,/en 頁面上找不到會導致這顆按鈕靜默失效。
   function openChat() {
-    const fab = document.querySelector<HTMLButtonElement>(
-      'button[aria-label="開啟智慧客服"]'
-    );
+    const fab = document.querySelector<HTMLButtonElement>("[data-chat-fab]");
     fab?.click();
     fab?.scrollIntoView({ behavior: "smooth", block: "end" });
     onClose();
@@ -163,16 +164,16 @@ export default function RoomMockupFlyout({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="居家擺放模擬"
+        aria-label={messages.mockup.dialogTitle}
         className={`fixed right-0 top-0 z-50 flex h-dvh w-full max-w-2xl flex-col bg-paper shadow-2xl transition-transform duration-300 ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="flex items-center justify-between border-b border-line px-6 py-5">
-          <h2 className="font-serif text-lg text-ink">居家擺放模擬</h2>
+          <h2 className="font-serif text-lg text-ink">{messages.mockup.dialogTitle}</h2>
           <button
             type="button"
-            aria-label="關閉"
+            aria-label={messages.mockup.close}
             onClick={onClose}
             className="flex h-9 w-9 items-center justify-center text-ink-soft hover:text-ink"
           >
@@ -194,7 +195,7 @@ export default function RoomMockupFlyout({
 
           {step === "pick" && (
             <div className="px-6 py-5">
-              <p className="mb-4 text-sm text-ink-soft">上傳照片或用示範空間，30 秒生成</p>
+              <p className="mb-4 text-sm text-ink-soft">{messages.mockup.pickHint}</p>
               {error && <p className="mb-3 text-xs text-danger">{error}</p>}
               <div className="grid grid-cols-2 gap-3">
                 {DEMO_ROOMS.map((room) => (
@@ -211,7 +212,7 @@ export default function RoomMockupFlyout({
                     <div className="relative aspect-[4/3] w-full">
                       <Image
                         src={`/rooms/${room.slug}.jpg`}
-                        alt={room.label}
+                        alt={messages.mockup.demoRooms[room.key]}
                         fill
                         sizes="(max-width: 640px) 50vw, 300px"
                         className="object-cover"
@@ -224,7 +225,7 @@ export default function RoomMockupFlyout({
                           : "bg-card text-ink-soft"
                       }`}
                     >
-                      {room.label}
+                      {messages.mockup.demoRooms[room.key]}
                     </div>
                   </button>
                 ))}
@@ -242,7 +243,7 @@ export default function RoomMockupFlyout({
                   onClick={() => fileInputRef.current?.click()}
                   className="iv-btn-ghost w-full"
                 >
-                  上傳我家的照片
+                  {messages.mockup.uploadMyPhoto}
                 </button>
               </div>
             </div>
@@ -254,7 +255,7 @@ export default function RoomMockupFlyout({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={pendingImage.dataUrl}
-                  alt="空間照片預覽"
+                  alt={messages.mockup.roomPreviewAlt}
                   className="aspect-[4/3] w-full animate-pulse rounded-[2px] object-cover opacity-70"
                 />
               ) : (
@@ -262,9 +263,9 @@ export default function RoomMockupFlyout({
               )}
               <div className="mt-4 text-center text-xs text-ink-soft">
                 <div className="animate-pulse font-medium text-accent">
-                  正在為您把作品掛上牆…
+                  {messages.mockup.hangingInProgress}
                 </div>
-                <div className="mt-1">約需 15–30 秒,請稍候片刻。</div>
+                <div className="mt-1">{messages.mockup.hangingWait}</div>
               </div>
             </div>
           )}
@@ -274,13 +275,13 @@ export default function RoomMockupFlyout({
               <div className="w-full">
                 {imgExpired ? (
                   <div className="flex aspect-[4/3] w-full items-center justify-center bg-panel px-6 text-center text-sm text-ink-soft">
-                    圖片已過期,請重新生成
+                    {messages.mockup.imageExpired}
                   </div>
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={result.mockupUrl}
-                    alt={`${product.name} 擺放模擬圖`}
+                    alt={`${product.name} ${messages.mockup.mockupAltSuffix}`}
                     className="w-full"
                     onError={() => setImgExpired(true)}
                   />
@@ -290,11 +291,13 @@ export default function RoomMockupFlyout({
               <div className="border-t border-line px-6 py-5">
                 <div className="mb-5">
                   <span className="font-serif text-[30px] text-ink">
-                    {formatTWD(result.price)}
+                    {formatTWD(result.price, locale)}
                   </span>
                   {hasRental && (
                     <div className="mt-1 text-[13px] text-muted-2">
-                      或 {formatTWD(result.priceRentalMonthly!)} / 月起租
+                      {messages.mockup.orRentalFromPrefix}
+                      {formatTWD(result.priceRentalMonthly!, locale)}
+                      {messages.mockup.orRentalFromSuffix}
                     </div>
                   )}
                 </div>
@@ -305,8 +308,8 @@ export default function RoomMockupFlyout({
                       product={{ id: result.productId, slug: product.slug, name: product.name }}
                       mode="buyout"
                       unitPrice={result.price}
-                      label="買斷"
-                      addedLabel="已加入 ✓"
+                      label={getPurchaseModeLabel("buyout", locale)}
+                      addedLabel={messages.product.addedToCart}
                       onAdded={onClose}
                       className="iv-btn-primary flex-1"
                     />
@@ -314,8 +317,8 @@ export default function RoomMockupFlyout({
                       product={{ id: result.productId, slug: product.slug, name: product.name }}
                       mode="rental"
                       unitPrice={result.priceRentalMonthly!}
-                      label="月租"
-                      addedLabel="已加入 ✓"
+                      label={getPurchaseModeLabel("rental", locale)}
+                      addedLabel={messages.product.addedToCart}
                       onAdded={onClose}
                       className="iv-btn-ghost flex-1"
                     />
@@ -325,8 +328,8 @@ export default function RoomMockupFlyout({
                     product={{ id: result.productId, slug: product.slug, name: product.name }}
                     mode="buyout"
                     unitPrice={result.price}
-                    label="買斷"
-                    addedLabel="已加入 ✓"
+                    label={getPurchaseModeLabel("buyout", locale)}
+                    addedLabel={messages.product.addedToCart}
                     onAdded={onClose}
                     className="iv-btn-primary w-full"
                   />
@@ -337,14 +340,14 @@ export default function RoomMockupFlyout({
                   onClick={openChat}
                   className="mt-4 block w-full text-center text-xs text-ink-soft underline underline-offset-2 hover:text-accent"
                 >
-                  跟顧問聊聊這件
+                  {messages.mockup.chatWithAdvisor}
                 </button>
                 <button
                   type="button"
                   onClick={resetToPick}
                   className="mt-2 block w-full text-center text-xs text-ink-soft underline underline-offset-2 hover:text-accent"
                 >
-                  換一張照片
+                  {messages.mockup.tryDifferentPhoto}
                 </button>
               </div>
             </div>

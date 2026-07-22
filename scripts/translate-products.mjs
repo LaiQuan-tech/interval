@@ -182,82 +182,12 @@ async function main() {
   let skipped = 0;
   let failed = 0;
 
-  // ---------- products(artwork / journey / membership 商品列共用一張表) ----------
-  log("讀取 active products…");
-  let productQuery = supabase
-    .from("products")
-    .select("id, slug, name, description, category, product_type, metadata, name_en")
-    .eq("status", "active")
-    .order("sort_order");
-  if (!FORCE) productQuery = productQuery.is("name_en", null);
-  const { data: products, error: productsErr } = await productQuery;
-  if (productsErr) {
-    fail(`讀取 products 失敗:${productsErr.message}`);
-    if (productsErr.message.includes("name_en")) {
-      fail("→ 看起來 name_en 欄位不存在,請先確認 migration 20260722000002_product_i18n.sql 已套用到此 DB。");
-    }
-    process.exitCode = 1;
-    return;
-  }
-  const productsToRun = products.slice(0, LIMIT);
-  ok(`共 ${products.length} 筆待翻(本次處理 ${productsToRun.length} 筆)`);
-
-  for (const p of productsToRun) {
-    const label = `[${p.product_type}] ${p.slug}`;
-    try {
-      const metadata = p.metadata ?? {};
-      const needsDuration = p.product_type === "journey" && Boolean(metadata.duration);
-
-      const schema = {
-        type: "object",
-        properties: {
-          name_en: { type: "string" },
-          description_en: { type: "string" },
-          ...(needsDuration ? { duration_en: { type: "string" } } : {}),
-        },
-        required: ["name_en", "description_en", ...(needsDuration ? ["duration_en"] : [])],
-      };
-
-      const hints = [
-        `slug(可作翻譯提示,不必逐字照搬):${p.slug}`,
-        p.category ? `分類:${p.category}` : null,
-        metadata.medium ? `媒材:${metadata.medium}` : null,
-        needsDuration ? `天數:${metadata.duration}` : null,
-      ]
-        .filter(Boolean)
-        .join("\n");
-
-      const user = `中文名稱:${p.name}\n中文描述:${p.description || "(無)"}\n${hints}\n\n請提供典雅的英文翻譯。${
-        needsDuration ? "duration_en 是天數的英文版(如「四天三夜」→\"4 Days, 3 Nights\")。" : ""
-      }`;
-
-      log(`翻譯中:${label}`);
-      const result = await callJSON(TRANSLATE_SYSTEM, user, schema);
-      if (!result?.name_en || !result?.description_en) {
-        throw new Error(`回傳缺少必要欄位:${JSON.stringify(result)}`);
-      }
-
-      const updatePayload = {
-        name_en: result.name_en,
-        description_en: result.description_en,
-      };
-      if (needsDuration && result.duration_en) {
-        updatePayload.metadata = { ...metadata, duration_en: result.duration_en };
-      }
-
-      const { error: updateErr } = await supabase.from("products").update(updatePayload).eq("id", p.id);
-      if (updateErr) throw new Error(updateErr.message);
-
-      ok(`完成:${label} → "${result.name_en}"`);
-      succeeded++;
-      await sleep(300); // 對 Gemini API 溫柔一點,避免速率限制
-    } catch (err) {
-      fail(`失敗:${label} — ${err.message}`);
-      failed++;
-    }
-  }
-
-  // ---------- membership_tiers ----------
+  // ---------- membership_tiers(先翻,products 的 membership 商品名稱要對齊這裡) ----------
+  // 順序很重要:products.name 與 membership_tiers.name 對同一等級是逐字相同的中文字串
+  // (如兩邊都存「緻銀會員」),必須先把 tier 翻好,products 那邊的同名商品才能直接沿用同一個
+  // 英文名稱,不然兩處各自獨立呼叫 AI 會翻出兩個不同的英文名(實測發生過:
+  // 「Silver Tier Membership」vs「Refined Silver Member」),同一方案在網站上出現兩個
+  // 不同英文名會很奇怪。
   log("讀取 membership_tiers…");
   let tierQuery = supabase.from("membership_tiers").select("slug, name, perks, name_en").order("sort");
   if (!FORCE) tierQuery = tierQuery.is("name_en", null);
@@ -300,6 +230,104 @@ async function main() {
       ok(`完成:${label} → "${result.name_en}"`);
       succeeded++;
       await sleep(300);
+    } catch (err) {
+      fail(`失敗:${label} — ${err.message}`);
+      failed++;
+    }
+  }
+
+  // 不管這次有沒有翻到任何 tier,都要拿到「目前所有 tier 的英文名稱」完整對照表——
+  // products 那邊的 membership 商品要對齊的是 tier 的最終狀態(可能是這次剛翻的,
+  // 也可能是之前就翻好、這次因為冪等被跳過的),用一次乾淨的全量查詢最保險。
+  const { data: allTiers, error: allTiersErr } = await supabase
+    .from("membership_tiers")
+    .select("slug, name_en");
+  if (allTiersErr) {
+    fail(`讀取 membership_tiers 英文名稱對照表失敗:${allTiersErr.message}`);
+    process.exitCode = 1;
+    return;
+  }
+  const tierEnNameBySlug = new Map(allTiers.map((t) => [t.slug, t.name_en]).filter(([, v]) => v));
+
+  // ---------- products(artwork / journey / membership 商品列共用一張表) ----------
+  log("讀取 active products…");
+  let productQuery = supabase
+    .from("products")
+    .select("id, slug, name, description, category, product_type, metadata, name_en")
+    .eq("status", "active")
+    .order("sort_order");
+  if (!FORCE) productQuery = productQuery.is("name_en", null);
+  const { data: products, error: productsErr } = await productQuery;
+  if (productsErr) {
+    fail(`讀取 products 失敗:${productsErr.message}`);
+    if (productsErr.message.includes("name_en")) {
+      fail("→ 看起來 name_en 欄位不存在,請先確認 migration 20260722000002_product_i18n.sql 已套用到此 DB。");
+    }
+    process.exitCode = 1;
+    return;
+  }
+  const productsToRun = products.slice(0, LIMIT);
+  ok(`共 ${products.length} 筆待翻(本次處理 ${productsToRun.length} 筆)`);
+
+  for (const p of productsToRun) {
+    const label = `[${p.product_type}] ${p.slug}`;
+    try {
+      const metadata = p.metadata ?? {};
+      const needsDuration = p.product_type === "journey" && Boolean(metadata.duration);
+      // membership 商品的 name 與對應 tier 的 name 是逐字相同的中文字串,英文名稱直接沿用
+      // tier 那邊翻好的結果,不再讓 AI 獨立重翻一次(避免兩處各自翻出不同英文名)。
+      const tierSlug = p.product_type === "membership" ? metadata.tier_slug : undefined;
+      const reuseTierName = tierSlug ? tierEnNameBySlug.get(tierSlug) : undefined;
+
+      const schema = {
+        type: "object",
+        properties: {
+          ...(reuseTierName ? {} : { name_en: { type: "string" } }),
+          description_en: { type: "string" },
+          ...(needsDuration ? { duration_en: { type: "string" } } : {}),
+        },
+        required: [
+          ...(reuseTierName ? [] : ["name_en"]),
+          "description_en",
+          ...(needsDuration ? ["duration_en"] : []),
+        ],
+      };
+
+      const hints = [
+        `slug(可作翻譯提示,不必逐字照搬):${p.slug}`,
+        p.category ? `分類:${p.category}` : null,
+        metadata.medium ? `媒材:${metadata.medium}` : null,
+        needsDuration ? `天數:${metadata.duration}` : null,
+        reuseTierName ? `此會員等級的英文名稱已定案為:"${reuseTierName}"(description_en 若提到等級名稱,直接用這個)` : null,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const user = `中文名稱:${p.name}\n中文描述:${p.description || "(無)"}\n${hints}\n\n請提供典雅的英文翻譯。${
+        needsDuration ? "duration_en 是天數的英文版(如「四天三夜」→\"4 Days, 3 Nights\")。" : ""
+      }`;
+
+      log(`翻譯中:${label}`);
+      const result = await callJSON(TRANSLATE_SYSTEM, user, schema);
+      const name_en = reuseTierName ?? result?.name_en;
+      if (!name_en || !result?.description_en) {
+        throw new Error(`回傳缺少必要欄位:${JSON.stringify(result)}`);
+      }
+
+      const updatePayload = {
+        name_en,
+        description_en: result.description_en,
+      };
+      if (needsDuration && result.duration_en) {
+        updatePayload.metadata = { ...metadata, duration_en: result.duration_en };
+      }
+
+      const { error: updateErr } = await supabase.from("products").update(updatePayload).eq("id", p.id);
+      if (updateErr) throw new Error(updateErr.message);
+
+      ok(`完成:${label} → "${name_en}"${reuseTierName ? "(沿用 tier 英文名)" : ""}`);
+      succeeded++;
+      await sleep(300); // 對 Gemini API 溫柔一點,避免速率限制
     } catch (err) {
       fail(`失敗:${label} — ${err.message}`);
       failed++;

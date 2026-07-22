@@ -100,6 +100,7 @@ export default function RoomMockupFlyout({
         body: JSON.stringify({
           sessionId: sessionIdRef.current,
           artworkSlug: product.slug,
+          locale,
           ...payload,
         }),
       });

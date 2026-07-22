@@ -12,6 +12,8 @@ import {
 import { getCompanyProfile, getRateCard } from "@/lib/settings";
 import { createQuoteDraftFromSession } from "@/lib/quote";
 import type { ChatMessage } from "@/lib/types";
+import { isLocale, type Locale } from "@/lib/i18n/config";
+import { localizeText } from "@/lib/format";
 
 export const maxDuration = 60;
 
@@ -20,7 +22,7 @@ function sse(payload: object) {
 }
 
 export async function POST(req: NextRequest) {
-  let body: { messages?: ChatMessage[]; sessionId?: string };
+  let body: { messages?: ChatMessage[]; sessionId?: string; locale?: string };
   try {
     body = await req.json();
   } catch {
@@ -34,6 +36,8 @@ export async function POST(req: NextRequest) {
   if (messages.length === 0 || !sessionId) {
     return new Response("bad request", { status: 400 });
   }
+  // 預設 zh:未帶 locale 或帶不合法值時,與現行行為逐字相同。
+  const locale: Locale = body.locale && isLocale(body.locale) ? body.locale : "zh";
 
   const supabase = tryCreateAdminClient();
   const ip =
@@ -79,18 +83,21 @@ export async function POST(req: NextRequest) {
   const { data: products } = supabase
     ? await supabase
         .from("products")
-        .select("name, price, category, product_type, price_rental_monthly")
+        .select("name, name_en, price, category, product_type, price_rental_monthly")
         .eq("status", "active")
         .order("featured", { ascending: false })
         .limit(20)
     : { data: [] };
+  // locale='en' 時商品名用 name_en(未翻譯 fallback 中文,見 lib/format.ts 的 localizeText);
+  // 價格格式沿用原樣(不切換千分位/貨幣格式),只換名稱來源。
   const productSummary = (products ?? [])
     .map((p) => {
+      const displayName = localizeText(p.name, p.name_en, locale);
       const priceLabel =
         p.product_type === "artwork" && p.price_rental_monthly
           ? `月租 NT$${p.price_rental_monthly} · 買斷 NT$${p.price}`
           : `NT$${p.price}`;
-      return `- ${p.name}(${priceLabel}${p.category ? `,${p.category}` : ""})`;
+      return `- ${displayName}(${priceLabel}${p.category ? `,${p.category}` : ""})`;
     })
     .join("\n");
 
@@ -104,7 +111,7 @@ export async function POST(req: NextRequest) {
 
       try {
         if (hasGeminiKey()) {
-          const system = buildSalesSystem(company, rateCard, productSummary);
+          const system = buildSalesSystem(company, rateCard, productSummary, locale);
           // gemma-4 思考吃 token 預算的極端情況下,串流會「正常結束但正文為空」
           // (finishReason=MAX_TOKENS,不拋錯、進不了 catch)——空回覆重試一次;
           // 重試安全:第一輪全空代表客戶端還沒收到任何字。再空就退規則式回覆。
@@ -118,18 +125,18 @@ export async function POST(req: NextRequest) {
             }
           }
           if (!assistantText.trim()) {
-            assistantText = fallbackReply(messages, company);
+            assistantText = fallbackReply(messages, company, locale);
             push({ type: "text", text: assistantText });
           }
         } else {
-          assistantText = fallbackReply(messages, company);
+          assistantText = fallbackReply(messages, company, locale);
           push({ type: "text", text: assistantText });
         }
       } catch (err) {
         // Gemini 失敗(含免費層 429 限流)時退回規則式回覆,客服流程不中斷
         console.error("[chat] stream failed:", err);
         if (!assistantText) {
-          assistantText = fallbackReply(messages, company);
+          assistantText = fallbackReply(messages, company, locale);
           push({ type: "text", text: assistantText });
         } else {
           // 中斷提示也要併入 assistantText,讓落庫內容與客戶實際看到的一致
@@ -183,7 +190,7 @@ export async function POST(req: NextRequest) {
       let quotePending = false;
       try {
         if (supabase && hasQuoteIntent(fullConvo)) {
-          const readiness = await classifyQuoteReady(fullConvo);
+          const readiness = await classifyQuoteReady(fullConvo, locale);
           if (readiness.needsQuote && readiness.email) {
             const quote = await createQuoteDraftFromSession(
               sessionId,

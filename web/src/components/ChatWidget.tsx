@@ -35,7 +35,9 @@ export default function ChatWidget() {
   const pathname = usePathname();
   // 這個元件自己的對話陣列 state 也叫 messages,與 useTranslations() 回傳的
   // messages(i18n 字典)撞名——這裡刻意重新命名成 t,其餘元件沒有這個問題不需要跟進。
-  const { messages: t } = useTranslations();
+  // locale 直接轉送給 /api/chat、/api/chat/mockup,讓 AI 客服知道要用哪個語言回覆
+  // (Phase E:lib/ai.ts 的 buildSalesSystem/fallbackReply 等依此切換英文分支)。
+  const { locale, messages: t } = useTranslations();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<WidgetMessage[]>([
     {
@@ -94,6 +96,7 @@ export default function ChatWidget() {
         body: JSON.stringify({
           messages: toApiHistory(next).slice(-12),
           sessionId: sessionIdRef.current,
+          locale,
         }),
       });
 
@@ -203,6 +206,7 @@ export default function ChatWidget() {
           sessionId: sessionIdRef.current,
           artworkSlug: selectedSlug,
           image: { mime: pendingImage.mime, base64: pendingImage.base64 },
+          locale,
         }),
       });
       const data = await res.json().catch(() => null);

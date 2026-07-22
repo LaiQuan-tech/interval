@@ -16,6 +16,8 @@ import { watermarkMockup } from "@/lib/watermark";
 import { getCompanyProfile } from "@/lib/settings";
 import { signChatImage } from "@/lib/chat-images";
 import type { ChatMessage } from "@/lib/types";
+import { isLocale, type Locale } from "@/lib/i18n/config";
+import { localizeText } from "@/lib/format";
 
 export const maxDuration = 60;
 // 函式釘在東京(hnd1),與 Supabase(ap-northeast-1)同地。預設跑在美東(iad1),
@@ -202,13 +204,20 @@ function demoMockupCachePath(artworkSlug: string, roomSlug: string, sourceKey: s
 // 快取命中時的接續導購文案:刻意不呼叫 AI——gemma 一次文字呼叫要 1~3 秒,會吃掉「命中直接
 // 回應」的意義。文字內容比照 generateMockupFollowup()(web/src/lib/ai.ts)裡無 AI key 時的
 // fallback 模板;兩處各自維護一份是刻意的(避免這支 route 依賴 ai.ts 近期正在變動的其他區塊),
-// 改一處記得回頭同步另一處。
+// 改一處記得回頭同步另一處(zh 與 en 都要同步)。
 function mockupFollowupFallback(params: {
   artworkName: string;
   monthlyPrice: number | null;
   buyoutPrice: number;
+  locale?: Locale;
 }): string {
-  const { artworkName, monthlyPrice, buyoutPrice } = params;
+  const { artworkName, monthlyPrice, buyoutPrice, locale = "zh" } = params;
+  if (locale === "en") {
+    const priceLine = monthlyPrice
+      ? `rent NT$${monthlyPrice}/mo or buy NT$${buyoutPrice}`
+      : `buy NT$${buyoutPrice}`;
+    return `Here's how "${artworkName}" looks in your space — do you like the feel of it? This piece is currently ${priceLine}; if you like it, you can add it straight to your cart from the Collection page and choose monthly rental or outright purchase.`;
+  }
   const priceLine = monthlyPrice
     ? `月租 NT$${monthlyPrice}、買斷 NT$${buyoutPrice}`
     : `買斷 NT$${buyoutPrice}`;
@@ -221,6 +230,7 @@ export async function POST(req: NextRequest) {
     artworkSlug?: string;
     image?: { mime?: string; base64?: string };
     demoRoom?: string;
+    locale?: string;
   };
   try {
     body = await req.json();
@@ -233,6 +243,8 @@ export async function POST(req: NextRequest) {
   const mime = String(body.image?.mime ?? "");
   const base64 = String(body.image?.base64 ?? "");
   const demoRoomSlug = String(body.demoRoom ?? "").slice(0, 100);
+  // 預設 zh:未帶 locale 或帶不合法值時,與現行行為逐字相同。
+  const locale: Locale = body.locale && isLocale(body.locale) ? body.locale : "zh";
 
   if (!sessionId) return friendly("缺少 sessionId");
   if (!artworkSlug) return friendly("請選擇要模擬的作品");
@@ -296,7 +308,7 @@ export async function POST(req: NextRequest) {
   // 作品需為上架中的 artwork
   const { data: product } = await supabase
     .from("products")
-    .select("id, name, price, price_rental_monthly, images")
+    .select("id, name, name_en, price, price_rental_monthly, images")
     .eq("slug", artworkSlug)
     .eq("product_type", "artwork")
     .eq("status", "active")
@@ -304,6 +316,10 @@ export async function POST(req: NextRequest) {
   if (!product) {
     return friendly("找不到這件作品,請重新選擇");
   }
+  // 客服話術用的作品名稱依 locale 選(未翻譯 fallback 中文);合成給 Gemini 影像模型的
+  // instruction(readArtworkImage/generateRoomMockup 內的 product.name)不受此影響,
+  // 那段是 server 端內部提示詞,與客戶看到的語言無關,一律沿用中文原名。
+  const displayArtworkName = localizeText(product.name, product.name_en, locale);
 
   // 登入使用者(可選,同 /api/chat)
   let userId: string | null = null;
@@ -337,9 +353,10 @@ export async function POST(req: NextRequest) {
     if (cached?.signedUrl) {
       const roomUrl = `/rooms/${demoRoomSlug}.jpg`;
       const followupText = mockupFollowupFallback({
-        artworkName: product.name,
+        artworkName: displayArtworkName,
         monthlyPrice: product.price_rental_monthly ?? null,
         buyoutPrice: product.price,
+        locale,
       });
 
       const nextMessages: ChatMessage[] = [
@@ -477,14 +494,18 @@ export async function POST(req: NextRequest) {
   let followupText: string;
   try {
     followupText = await generateMockupFollowup({
-      artworkName: product.name,
+      artworkName: displayArtworkName,
       monthlyPrice: product.price_rental_monthly ?? null,
       buyoutPrice: product.price,
       company,
+      locale,
     });
   } catch (err) {
     console.error("[chat/mockup] followup generation failed:", err);
-    followupText = `這是《${product.name}》掛在您空間裡的模擬效果,喜歡這樣的氛圍嗎?歡迎直接到藝術典藏頁把這件作品加入購物車,選擇月租或買斷下單。`;
+    followupText =
+      locale === "en"
+        ? `Here's how "${displayArtworkName}" looks in your space — do you like the feel of it? Feel free to add this piece to your cart directly on the Collection page and choose monthly rental or outright purchase.`
+        : `這是《${product.name}》掛在您空間裡的模擬效果,喜歡這樣的氛圍嗎?歡迎直接到藝術典藏頁把這件作品加入購物車,選擇月租或買斷下單。`;
   }
 
   // 落庫:append 兩則訊息進 ai_chat_logs.messages(存路徑不存網址,避免簽名網址過期後破圖)。

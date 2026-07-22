@@ -1,5 +1,6 @@
 import type { ChatMessage, RateCardItem } from "@/lib/types";
 import type { CompanyProfile } from "@/lib/settings";
+import type { Locale } from "@/lib/i18n/config";
 
 // AI 設計原則(仿 gather-landing,並升級為串流):
 //  * AI 絕不自行報出價格 — 報價一律依費率卡由系統產生「草稿」,管理員核准後才寄出
@@ -23,11 +24,14 @@ export function hasGeminiKey() {
 
 // 居家擺放模擬入口說明(單一事實來源,本檔四處引用,避免入口改版時各處各自漂移):
 // 主要路徑是作品頁的「先看看掛在我家的樣子」按鈕,聊天視窗內 📷 上傳是保留的次要路徑。
-// 注意:web/src/components/ChatWidget.tsx 的開場歡迎詞是 client 元件,不 import 本檔
-// (避免把本檔的 fetch/Gemini 呼叫邏輯一併打進 client bundle),那邊維護了同義的另一份文案——
-// 兩處任一改動都要回頭同步對方,並保留這則註解的雙向指標。
-const MOCKUP_ENTRY_HINT =
-  "到該作品的商品頁點『先看看掛在我家的樣子』,用示範空間或上傳自家照片,約 30 秒就能生成擺放模擬圖;也可以直接在這裡點 📷 上傳照片";
+// 注意:web/src/components/ChatWidget.tsx 是 client 元件,不 import 本檔(避免把本檔的
+// fetch/Gemini 呼叫邏輯一併打進 client bundle)——它的開場歡迎詞改用
+// web/src/lib/i18n/messages/{zh,en}.ts 的 chat.mockupEntryHint,與這裡維護同義的另一份文案。
+// 三處(這裡的 zh/en 兩語 ⇄ messages/zh.ts ⇄ messages/en.ts)任一改動都要回頭同步其餘各處。
+const MOCKUP_ENTRY_HINT: Record<Locale, string> = {
+  zh: "到該作品的商品頁點『先看看掛在我家的樣子』,用示範空間或上傳自家照片,約 30 秒就能生成擺放模擬圖;也可以直接在這裡點 📷 上傳照片",
+  en: "On the artwork's product page, tap “See It on My Wall” and use a sample room or upload your own photo — a mockup takes about 30 seconds; you can also tap 📷 right here to upload directly",
+};
 
 function geminiHeaders() {
   return {
@@ -46,7 +50,8 @@ function toGeminiContents(messages: ChatMessage[]) {
 export function buildSalesSystem(
   company: CompanyProfile,
   rateCard: { note: string; items: RateCardItem[] },
-  productSummary: string
+  productSummary: string,
+  locale: Locale = "zh"
 ) {
   const rateLines = rateCard.items
     .map(
@@ -56,6 +61,46 @@ export function buildSalesSystem(
         }${i.note ? ` — ${i.note}` : ""}`
     )
     .join("\n");
+
+  if (locale === "en") {
+    return `You are the online concierge for "${company.name}". ${company.tagline ?? ""}
+
+[Brand & Services]
+${
+  company.about ??
+  "Good Days pairs a bookstore salon with an online art gallery: exclusive AI-generated artworks available to rent monthly, rent-to-own, or buy outright; fully bespoke private journeys; and a three-tier membership rewards program."
+}
+Contact email: ${company.email || "(please ask the customer to leave contact details so we can follow up)"}
+
+[Product Overview]
+${productSummary || "(please refer to the website for the current collection and journeys)"}
+
+[Internal Rate Reference — for your understanding of our business only, never state these prices directly to the customer]
+${rateLines || "(rate card not yet configured)"}
+
+[Response Rules]
+1. Always respond in English, in a warm, measured, professional tone, 2–5 sentences per reply.
+2. Only answer questions related to ${company.name}'s art collection, rental/buyout, private journeys, and membership program; politely decline other topics.
+3. Never invent artworks, journeys, prices, or policies that don't exist.
+4. When appropriate (without being pushy), invite the customer to leave contact details (email or phone).
+
+[Quote Rules — very important, keep clearly distinct from "Guiding to Checkout" below]
+- Never state or estimate any price yourself (you may reference the publicly listed rental/buyout/journey/membership prices on the site, but never estimate a price for a custom request).
+- Only enter the quote flow for: bespoke/custom artwork, bespoke journey planning, corporate or bulk/wholesale purchases, private event bookings — requests that aren't an existing catalog item and need negotiated pricing. For these, explain that we'll prepare a formal quote and ask for their email; once received, tell the customer the quote will be sent to their inbox after confirmation by our team.
+- Existing catalog artworks, journeys, and standard membership plans never enter the quote flow — never ask for an email to "prepare a quote" for these; use the "Guiding to Checkout" approach below instead.
+- If you can't tell whether the customer wants an existing catalog item or something fully custom, ask a clarifying question first (e.g. "Would you like to collect this exact piece, or something made just for you?") — don't default to pushing them toward a quote or checkout.
+
+[Guiding to Checkout — In-Stock Artworks / Journeys / Membership]
+- Every artwork, journey, and membership plan in our catalog is publicly priced. When a customer shows interest in a specific piece or journey, guide them directly to the Collection or Private Journeys page to add it to their cart and check out; artworks can be mentioned as available for monthly rental or outright purchase.
+- Customers who've already received a quote should click the link and hit "Accept Quote" to automatically place the order.
+- When customers ask about general membership perks, briefly explain the three tiers and points program, and guide them to the Membership Salon page or to book a visit; only corporate members/custom plans fall under the quote rules above.
+
+[Room Mockup — an important conversion tool, recommend it proactively]
+- Whenever a customer expresses interest in a piece, hesitates about whether the size or style suits their home, or asks things like "how would this look hanging up" or "would this suit my place," proactively and naturally suggest:
+  "Want to see how it'd look on your wall? ${MOCKUP_ENTRY_HINT.en}."
+- Don't push this every turn, but whenever the conversation touches a specific artwork and home placement, it's the best moment to offer it.
+- After a customer completes a room mockup, follow up by asking how they feel about it, and naturally mention that artwork's public rental/buyout price, guiding them to add it straight to their cart (this is an in-stock item — never route it into the quote flow).`;
+  }
 
   return `你是「${company.name}」的線上客服顧問。${company.tagline ?? ""}
 
@@ -91,7 +136,7 @@ ${rateLines || "(費率卡尚未設定)"}
 
 【居家擺放模擬 — 重要導購工具,要盡量主動推薦】
 - 只要客戶對某件作品表達興趣、猶豫尺寸或風格是否適合家裡、或問起「掛起來感覺如何」「適不適合我家」之類的問題,就主動且自然地提議:
-  「想看看掛起來的感覺,${MOCKUP_ENTRY_HINT}」。
+  「想看看掛起來的感覺,${MOCKUP_ENTRY_HINT.zh}」。
 - 不要每一輪都硬推,但只要話題碰到具體作品與居家擺放,就是最好的邀請時機。
 - 客戶完成擺放模擬後,接續詢問對效果的感覺,並自然帶到該作品的月租/買斷公開標價,引導直接加入購物車下單(這是現貨作品,不進報價流程)。`;
 }
@@ -245,8 +290,11 @@ async function callJSON<T>(system: string, user: string, schema: SchemaNode): Pr
 // 廉價前置過濾:只決定要不要花一次分類呼叫,故意寬鬆(含現貨詞如月租/買斷/價格)。
 // 真正的「客製 vs 現貨」分流由 classifyQuoteReady() 的 AI 分類器(或無 key 時的
 // CUSTOM_KEYWORDS fallback)決定,不在這一關把關。
+// 中英文關鍵字皆須維持「QUOTE_KEYWORDS 是 CUSTOM_KEYWORDS 的超集合」——
+// 下方 CUSTOM_KEYWORDS 新增的每個英文詞,這裡都要同步加入,否則英文客製需求
+// 連 hasQuoteIntent() 這道便宜前置閘門都進不了,classifyQuoteReady() 永遠不會被呼叫。
 const QUOTE_KEYWORDS =
-  /報價|估價|價格|多少錢|費用|預算|批發|大量|採購|訂閱|月租|租金|買斷|入會|會員方案|客製|旅程規劃|專屬|量身|訂製|企業|包場|quote|price/i;
+  /報價|估價|價格|多少錢|費用|預算|批發|大量|採購|訂閱|月租|租金|買斷|入會|會員方案|客製|旅程規劃|專屬|量身|訂製|企業|包場|quote|price|pricing|budget|how much|\bbespoke\b|\bcustom\b|\bcommission\b|\btailor-made\b|\bwholesale\b|\bbulk\b|\bcorporate\b|\benterprise\b|\bcharter\b/i;
 
 export function hasQuoteIntent(messages: ChatMessage[]) {
   return messages.some((m) => m.role === "user" && QUOTE_KEYWORDS.test(m.content));
@@ -254,7 +302,9 @@ export function hasQuoteIntent(messages: ChatMessage[]) {
 
 // 明確客製/企業大量詞——與上面寬鬆的 QUOTE_KEYWORDS 不同,這組刻意排除
 // 月租/買斷/價格等現貨詞,只用來判定「是否為需要正式報價單的客製需求」。
-const CUSTOM_KEYWORDS = /客製|訂製|量身|專屬|企業|大量|批發|包場|旅程規劃/;
+// 英文詞一律加 \b 詞界:避免「custom」誤中「customer」等常見詞的子字串。
+const CUSTOM_KEYWORDS =
+  /客製|訂製|量身|專屬|企業|大量|批發|包場|旅程規劃|\bbespoke\b|\bcustom\b|\bcommission\b|\btailor-made\b|\bwholesale\b|\bbulk\b|\bcorporate\b|\benterprise\b|\bcharter\b/i;
 
 function hasCustomIntent(messages: ChatMessage[]) {
   return messages.some((m) => m.role === "user" && CUSTOM_KEYWORDS.test(m.content));
@@ -270,7 +320,10 @@ export type QuoteReadiness = {
   phone: string;
 };
 
-export async function classifyQuoteReady(messages: ChatMessage[]): Promise<QuoteReadiness> {
+export async function classifyQuoteReady(
+  messages: ChatMessage[],
+  locale: Locale = "zh"
+): Promise<QuoteReadiness> {
   const transcript = messages
     .map((m) => `${m.role === "user" ? "客戶" : "客服"}:${m.content}`)
     .join("\n");
@@ -297,7 +350,11 @@ export async function classifyQuoteReady(messages: ChatMessage[]): Promise<Quote
 現貨/下單類(needsQuote=false):詢問商城現有作品、旅程、一般會員方案——這些都已公開標價,不算報價需求,即使客戶問到價格也一樣是 false。
 無法判斷客戶要的是商城現有品項還是客製一份新的時,一律回傳 needsQuote=false(交由客服人員口頭詢問澄清,不要臆測)。
 
-只擷取客戶實際說過的聯絡資訊,沒有就留空字串。`,
+只擷取客戶實際說過的聯絡資訊,沒有就留空字串。${
+      locale === "en"
+        ? "\n\n對話可能是英文,上述判準不受語言影響,一樣適用(bespoke/custom/commission/tailor-made/wholesale/bulk/corporate/enterprise/charter 等視為客製類 needsQuote=true;詢問現貨 rent/buy/price/how much 等維持 needsQuote=false)。"
+        : ""
+    }`,
     `對話紀錄:\n${transcript}\n\n請判斷:needsQuote(是否為需要正式報價單的客製/企業大量需求)、email、name、phone。`,
     {
       type: "object",
@@ -449,8 +506,39 @@ export async function generateMockupFollowup(params: {
   monthlyPrice: number | null;
   buyoutPrice: number;
   company: CompanyProfile;
+  locale?: Locale;
 }): Promise<string> {
-  const { artworkName, monthlyPrice, buyoutPrice, company } = params;
+  const { artworkName, monthlyPrice, buyoutPrice, company, locale = "zh" } = params;
+
+  if (locale === "en") {
+    const priceLineEn = monthlyPrice
+      ? `rent NT$${monthlyPrice}/mo or buy NT$${buyoutPrice}`
+      : `buy NT$${buyoutPrice}`;
+
+    if (!hasGeminiKey()) {
+      return `Here's how "${artworkName}" looks in your space — do you like the feel of it? This piece is currently ${priceLineEn}; if you like it, you can add it straight to your cart from the Collection page and choose monthly rental or outright purchase.`;
+    }
+
+    const result = await callJSON<{ text: string }>(
+      `You are the online concierge for "${company.name}", and you've just generated a room mockup for a customer (compositing the artwork into a photo of their own space).
+Write a warm, measured, professional 2-4 sentence reply in English: first ask how they feel about the placement, then naturally mention this artwork's public listed price "${priceLineEn}",
+and finally guide them to add this piece to their cart directly on the Collection page, choosing monthly rental or outright purchase. This is an in-stock item — never mention a quote or ask whether they need one,
+and never estimate or state any price beyond the public listed price, and don't invent any specifications.`,
+      `Artwork name: "${artworkName}"`,
+      {
+        type: "object",
+        properties: { text: { type: "string" } },
+        required: ["text"],
+        additionalProperties: false,
+      }
+    );
+
+    return (
+      result?.text ??
+      `Here's how "${artworkName}" looks in your space — do you like the feel of it? This piece is currently ${priceLineEn}; if you like it, you can add it straight to your cart from the Collection page and choose monthly rental or outright purchase.`
+    );
+  }
+
   const priceLine = monthlyPrice
     ? `月租 NT$${monthlyPrice}、買斷 NT$${buyoutPrice}`
     : `買斷 NT$${buyoutPrice}`;
@@ -480,12 +568,44 @@ export async function generateMockupFollowup(params: {
 }
 
 // ---------- 規則式 fallback 回覆(無 API key 時) ----------
-export function fallbackReply(messages: ChatMessage[], company: CompanyProfile) {
+export function fallbackReply(
+  messages: ChatMessage[],
+  company: CompanyProfile,
+  locale: Locale = "zh"
+) {
   const userMessages = messages.filter((m) => m.role === "user");
   const last = userMessages.at(-1)?.content ?? "";
   const email = last.match(EMAIL_RE)?.[0];
   // 客製意圖看整段對話(不只最後一則),讓「先聊客製、後補 email」這種常見兩輪流程仍能命中。
   const customIntent = userMessages.some((m) => CUSTOM_KEYWORDS.test(m.content));
+
+  if (locale === "en") {
+    if (email && customIntent) {
+      return `Got it! We'll send the quote to ${email} once it's confirmed by our team — please keep an eye on your inbox. Feel free to reach out with anything else.`;
+    }
+    if (customIntent) {
+      return `Understood — we'll put together a formal quote for your custom request. Could you share your email? We'll send the quote over once it's confirmed by our team.`;
+    }
+    if (/\b(hang|hanging|display|look|feel|suit(s)?|fit(s)?)\b.*\b(home|house|room|place|space|wall)\b|\b(living room|bedroom|study|dining room)\b/i.test(last)) {
+      return `The best way to know is to see it for yourself! ${MOCKUP_ENTRY_HINT.en}.`;
+    }
+    if (/\b(artwork|painting|piece|collection|rental|rent|buyout|own|purchase)\b/i.test(last)) {
+      return `You'll find our full art collection on the Collection page — every piece can be rented monthly or bought outright, all at listed prices. Add anything you like straight to your cart; want to see how it'd look at home first? ${MOCKUP_ENTRY_HINT.en}.`;
+    }
+    if (/\b(journey|trip|itinerary)\b/i.test(last)) {
+      return `Our private journeys are all listed on the Private Journeys page at fixed prices — sign up for any that catch your eye. For a fully bespoke journey, leave your email and a dedicated advisor will be in touch.`;
+    }
+    if (/\b(member|membership|points?|join)\b/i.test(last)) {
+      return `Good Days offers three membership tiers — Silver, Gold, and Collector — earning points on purchases, visits, and rentals, redeemable for journeys and collection discounts. Check out the Membership Salon page, or book a visit to apply.`;
+    }
+    if (/\b(shipping|delivery|install(ation)?|logistics|how long)\b/i.test(last)) {
+      return `Both rentals and purchases include framing, delivery, and in-home installation — timing updates will appear on your order page. You're also welcome to leave your email and we'll keep you posted.`;
+    }
+    if (QUOTE_KEYWORDS.test(last)) {
+      return `Everything in our collection, journeys, and membership plans is listed at fixed prices — feel free to browse and select directly. If you're after something fully custom, leave your email and we'll prepare a formal quote for you.`;
+    }
+    return `Hi, welcome to ${company.name}! Ask me anything about the art collection, rental/buyout, private journeys, or membership. Found something you like? ${MOCKUP_ENTRY_HINT.en}. You're also welcome to book a visit, or leave your email so we can follow up.`;
+  }
 
   if (email && customIntent) {
     return `收到!我們會把報價單寄到 ${email},專人確認後就會發出,再麻煩留意信箱。如有其他需求也歡迎直接留言。`;
@@ -494,10 +614,10 @@ export function fallbackReply(messages: ChatMessage[], company: CompanyProfile) 
     return `了解您的客製需求!我們會為您準備一份正式報價單。方便留下您的 email 嗎?專人確認後就會把報價單寄給您。`;
   }
   if (/掛|擺放|效果|感覺如何|適合我家|我家|空間感|客廳|書房/.test(last)) {
-    return `想知道掛起來的感覺最直接了!${MOCKUP_ENTRY_HINT}。`;
+    return `想知道掛起來的感覺最直接了!${MOCKUP_ENTRY_HINT.zh}。`;
   }
   if (/作品|典藏|畫作|租賃|買斷|月租/.test(last)) {
-    return `我們的畫作典藏都在「藝術典藏」頁面,每件作品皆可選擇月租或買斷,都是公開標價。看到喜歡的直接加入購物車就能結帳;想先看看掛在家裡的感覺,${MOCKUP_ENTRY_HINT}。`;
+    return `我們的畫作典藏都在「藝術典藏」頁面,每件作品皆可選擇月租或買斷,都是公開標價。看到喜歡的直接加入購物車就能結帳;想先看看掛在家裡的感覺,${MOCKUP_ENTRY_HINT.zh}。`;
   }
   if (/旅程|旅行|行程/.test(last)) {
     return `我們的私人旅程都在「私人旅程」頁面,每個行程都是公開標價,看到喜歡的直接報名即可。若想完全客製屬於您的行程,留下 email 我們會請專屬顧問與您聯繫。`;
@@ -511,5 +631,5 @@ export function fallbackReply(messages: ChatMessage[], company: CompanyProfile) 
   if (QUOTE_KEYWORDS.test(last)) {
     return `商城裡的作品、旅程與會員方案都是公開標價,歡迎直接到頁面上選購;如果是想客製一份專屬的畫作或旅程,留下 email 我們會為您準備正式報價單。`;
   }
-  return `您好,歡迎來到 ${company.name}!想了解藝術典藏、租賃買斷、私人旅程或會員制度,都可以直接跟我說。看到喜歡的作品,${MOCKUP_ENTRY_HINT};也歡迎預約參訪,或留下 email 讓我們主動與您聯繫。`;
+  return `您好,歡迎來到 ${company.name}!想了解藝術典藏、租賃買斷、私人旅程或會員制度,都可以直接跟我說。看到喜歡的作品,${MOCKUP_ENTRY_HINT.zh};也歡迎預約參訪,或留下 email 讓我們主動與您聯繫。`;
 }

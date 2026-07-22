@@ -178,3 +178,29 @@ export function formatPoints(points: number, locale: Locale = "zh") {
     ? `${points.toLocaleString("en-US")} pts`
     : `${points.toLocaleString("zh-TW")} 點`;
 }
+
+// ---------- Phase D:商品內容(DB 欄位,非靜態 map)的 locale 存取器 ----------
+// 與上面 label() 系列(靜態中英 map)不同,商品名稱/描述/會員權益是逐筆存在 DB 的內容,
+// 且英文欄位由 AI 翻譯腳本(scripts/translate-products.mjs)陸續補上、可能還是 null。
+// 規則不變:locale !== "en" 一律回中文(admin 呼叫點不傳 locale 或傳 "zh" 就保證後台永遠中文);
+// locale === "en" 時優先回英文,尚未翻譯(en 為 null/undefined/空字串)則 fallback 回中文——
+// 這是「未翻譯自動退回中文」的唯一事實來源,D3 各頁面都呼叫這裡,不要在頁面各自重寫三元判斷。
+export function localizeText(
+  zh: string,
+  en: string | null | undefined,
+  locale: Locale = "zh",
+): string {
+  if (locale !== "en") return zh;
+  return en && en.trim() ? en : zh;
+}
+
+// 陣列版本(會員權益 perks):en 陣列存在且非空才使用,否則整份 fallback 中文陣列
+// (不逐項 fallback——避免中英文權益混雜同一個清單,語意會很奇怪)。
+export function localizeList(
+  zh: string[],
+  en: string[] | null | undefined,
+  locale: Locale = "zh",
+): string[] {
+  if (locale !== "en") return zh;
+  return en && en.length > 0 ? en : zh;
+}

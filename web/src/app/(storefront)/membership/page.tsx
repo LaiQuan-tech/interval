@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatTWD } from "@/lib/format";
+import { formatTWD, localizeText, localizeList } from "@/lib/format";
 import QuickAddButton from "@/components/QuickAddButton";
 import { getLocale, getMessages } from "@/lib/i18n/server";
 import type { MembershipTier, Product } from "@/lib/types";
@@ -92,9 +92,11 @@ export default async function MembershipPage() {
               <div className={`font-cormorant text-[13px] tracking-[0.24em] uppercase ${recommended ? "text-accent-dark" : "text-accent"}`}>
                 {tier.slug === "silver" ? "Silver" : tier.slug === "gold" ? "Gold" : "Platinum"}
               </div>
-              <h3 className="mt-3 mb-5 font-serif text-[26px] font-medium text-ink">{tier.name}</h3>
+              <h3 className="mt-3 mb-5 font-serif text-[26px] font-medium text-ink">
+                {localizeText(tier.name, tier.name_en, locale)}
+              </h3>
               <div className="flex flex-col gap-3 text-left text-[14px] leading-[1.6] text-ink-soft">
-                {tier.perks.map((perk) => (
+                {localizeList(tier.perks, tier.perks_en, locale).map((perk) => (
                   <div key={perk}>· {perk}</div>
                 ))}
               </div>

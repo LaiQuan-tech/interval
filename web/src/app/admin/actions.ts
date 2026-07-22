@@ -41,10 +41,16 @@ export async function upsertProduct(formData: FormData) {
         .map((url) => ({ url }))
     : [];
 
+  // 英文欄位選填,留空一律存 null(渲染端 localizeText 靠 null 判斷「尚未翻譯,fallback 中文」)。
+  const nameEnRaw = String(formData.get("name_en") ?? "").trim();
+  const descriptionEnRaw = String(formData.get("description_en") ?? "").trim();
+
   const payload = {
     name: String(formData.get("name") ?? "").trim(),
     slug: String(formData.get("slug") ?? "").trim().toLowerCase(),
     description: String(formData.get("description") ?? ""),
+    name_en: nameEnRaw || null,
+    description_en: descriptionEnRaw || null,
     price: Math.max(0, parseInt(String(formData.get("price") ?? "0"), 10) || 0),
     compare_at_price:
       parseInt(String(formData.get("compare_at_price") ?? ""), 10) || null,

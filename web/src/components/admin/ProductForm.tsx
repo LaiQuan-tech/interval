@@ -95,6 +95,25 @@ export default function ProductForm({ product }: { product: Product | null }) {
             defaultValue={product?.description ?? ""}
           />
         </div>
+        <div>
+          <label className="iv-label">英文名稱(選填,AI 已翻譯可覆核修改)</label>
+          <input
+            name="name_en"
+            className="iv-input"
+            defaultValue={product?.name_en ?? ""}
+            placeholder="留空則英文站顯示中文名稱"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="iv-label">英文描述(選填,AI 已翻譯可覆核修改)</label>
+          <textarea
+            name="description_en"
+            rows={5}
+            className="iv-input min-h-32"
+            defaultValue={product?.description_en ?? ""}
+            placeholder="留空則英文站顯示中文描述"
+          />
+        </div>
         <div className="sm:col-span-2">
           <label className="iv-label">圖片網址(一行一個)</label>
           <textarea

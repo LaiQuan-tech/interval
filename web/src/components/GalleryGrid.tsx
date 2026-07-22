@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { formatTWD } from "@/lib/format";
+import { formatTWD, localizeText } from "@/lib/format";
 import Placeholder, { gradientForId } from "@/components/Placeholder";
 import { useTranslations } from "@/lib/i18n/context";
 import type { Product } from "@/lib/types";
@@ -62,13 +62,13 @@ export default function GalleryGrid({ works }: { works: Product[] }) {
               <Link key={w.id} href={`/products/${w.slug}`} className="group block">
                 <Placeholder
                   src={w.images?.[0]?.url}
-                  alt={w.name}
+                  alt={localizeText(w.name, w.name_en, locale)}
                   gradient={metadata?.gradient ?? gradientForId(w.id)}
                   label={metadata?.tag}
                   className="h-70 sm:h-80"
                 />
                 <div className="mt-4 flex items-baseline justify-between gap-2">
-                  <h4 className="font-serif text-[19px] text-ink">{w.name}</h4>
+                  <h4 className="font-serif text-[19px] text-ink">{localizeText(w.name, w.name_en, locale)}</h4>
                   {metadata?.medium && (
                     <span className="font-cormorant text-[14px] text-accent whitespace-nowrap">
                       {metadata.medium}

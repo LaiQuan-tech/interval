@@ -17,6 +17,9 @@ export type Product = {
   slug: string;
   name: string;
   description: string;
+  // Phase D:AI 翻譯的英文欄位,可能尚未翻譯(null)——渲染端一律 fallback 中文。
+  name_en: string | null;
+  description_en: string | null;
   price: number;
   compare_at_price: number | null;
   currency: string;
@@ -164,6 +167,9 @@ export type MembershipTier = {
   rebate_rate: number; // 每消費 NT$100 累點數(%)
   perks: string[];
   sort: number;
+  // Phase D:AI 翻譯的英文欄位,可能尚未翻譯(null)——渲染端一律 fallback 中文。
+  name_en: string | null;
+  perks_en: string[] | null;
 };
 
 export type PointsSource = "earn" | "redeem" | "expire" | "refund" | "manual_adjust" | "promo";

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatTWD, formatPoints } from "@/lib/format";
+import { formatTWD, formatPoints, localizeText, localizeList } from "@/lib/format";
 import Placeholder, { gradientForId } from "@/components/Placeholder";
 import ArtworkPurchaseSection from "@/components/ArtworkPurchaseSection";
 import QuickAddButton from "@/components/QuickAddButton";
@@ -73,15 +73,19 @@ export default async function ProductDetailPage({
     medium?: string;
     gradient?: [string, string];
     duration?: string;
+    duration_en?: string;
   };
   const gradient = metadata?.gradient ?? gradientForId(product.id);
+  const displayName = localizeText(product.name, product.name_en, locale);
+  const displayDescription = localizeText(product.description, product.description_en, locale);
+  const displayDuration = localizeText(metadata?.duration ?? "", metadata?.duration_en, locale);
 
   return (
     <div className="lm-container py-12 sm:py-16">
       <div className="grid gap-10 lg:grid-cols-2 lg:gap-14">
         <Placeholder
           src={product.images?.[0]?.url}
-          alt={product.name}
+          alt={displayName}
           gradient={gradient}
           label={metadata?.tag}
           sizes="(max-width: 1024px) 100vw, 50vw"
@@ -94,14 +98,14 @@ export default async function ProductDetailPage({
             <span className="lm-caption text-[12px]">{product.category}</span>
           )}
           <h1 className="mt-2 mb-1 font-serif text-[28px] font-normal text-ink sm:text-[34px]">
-            {product.name}
+            {displayName}
           </h1>
           {metadata?.medium && (
             <span className="font-cormorant text-[15px] text-accent">{metadata.medium}</span>
           )}
 
           <p className="mt-6 whitespace-pre-wrap text-[15px] leading-[1.9] text-ink-soft">
-            {product.description || messages.product.noDescription}
+            {displayDescription || messages.product.noDescription}
           </p>
 
           <div className="mt-8">
@@ -111,8 +115,8 @@ export default async function ProductDetailPage({
 
             {product.product_type === "journey" && (
               <div>
-                {metadata?.duration && (
-                  <div className="mb-1 text-[13px] text-muted-2">{metadata.duration}</div>
+                {displayDuration && (
+                  <div className="mb-1 text-[13px] text-muted-2">{displayDuration}</div>
                 )}
                 <div className="mb-2 flex items-baseline gap-2">
                   <span className="font-cormorant text-[15px] text-accent">{messages.product.fromLabel}</span>
@@ -142,7 +146,7 @@ export default async function ProductDetailPage({
                 </div>
                 {tier && tier.perks.length > 0 && (
                   <div className="mb-6 flex flex-col gap-2.5 text-[14px] leading-[1.6] text-ink-soft">
-                    {tier.perks.map((perk) => (
+                    {localizeList(tier.perks, tier.perks_en, locale).map((perk) => (
                       <div key={perk}>· {perk}</div>
                     ))}
                   </div>

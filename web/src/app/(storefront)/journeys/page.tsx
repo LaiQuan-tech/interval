@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatTWD, formatPoints } from "@/lib/format";
+import { formatTWD, formatPoints, localizeText } from "@/lib/format";
 import Placeholder from "@/components/Placeholder";
 import QuickAddButton from "@/components/QuickAddButton";
 import OpenChatButton from "@/components/OpenChatButton";
@@ -79,7 +79,9 @@ export default async function JourneysPage() {
         ) : (
           <div className="flex flex-col gap-0.5 bg-line">
             {journeys.map((j) => {
-              const metadata = j.metadata as { duration?: string };
+              const metadata = j.metadata as { duration?: string; duration_en?: string };
+              const displayName = localizeText(j.name, j.name_en, locale);
+              const displayDuration = localizeText(metadata?.duration ?? "", metadata?.duration_en, locale);
               return (
                 <div
                   key={j.id}
@@ -87,18 +89,20 @@ export default async function JourneysPage() {
                 >
                   <Placeholder
                     src={j.images?.[0]?.url}
-                    alt={j.name}
+                    alt={displayName}
                     label={`journey · ${j.name.split("．")[0]}`}
                     sizes="(max-width: 1024px) 100vw, 30vw"
                     className="h-40"
                   />
                   <div>
                     <h3 className="mb-2.5 font-serif text-[21px] font-medium text-ink sm:text-[24px]">
-                      {j.name}
+                      {displayName}
                     </h3>
-                    <p className="text-[14px] leading-[1.95] text-ink-soft">{j.description}</p>
-                    {metadata?.duration && (
-                      <p className="mt-2 text-[12.5px] text-muted-2">{metadata.duration}</p>
+                    <p className="text-[14px] leading-[1.95] text-ink-soft">
+                      {localizeText(j.description, j.description_en, locale)}
+                    </p>
+                    {displayDuration && (
+                      <p className="mt-2 text-[12.5px] text-muted-2">{displayDuration}</p>
                     )}
                   </div>
                   <div className="text-left lg:text-right">

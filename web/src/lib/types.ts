@@ -85,6 +85,9 @@ export type Order = {
   idempotency_key: string | null;
   paid_at: string | null;
   created_at: string;
+  // Phase F1:下單當下的買家介面語系,決定通知信 subject/body 中英文分支。
+  // default 'zh',既有訂單一律 'zh'。
+  locale: "zh" | "en";
 };
 
 export type PurchaseMode = "buyout" | "rental" | "journey" | "membership";

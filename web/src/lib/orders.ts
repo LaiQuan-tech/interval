@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { emailShell, sendMail, siteUrl } from "@/lib/resend";
 import { grantPointsForOrder, applyMembershipPurchase } from "@/lib/points";
+import type { Locale } from "@/lib/i18n/config";
 import type { Order } from "@/lib/types";
 
 /**
@@ -52,15 +53,30 @@ export async function markOrderPaid(
   await applyMembershipPurchase(updatedOrder);
 
   if (order.contact_email) {
-    await sendMail({
-      to: order.contact_email,
-      subject: `【好日子】已收到您的款項 ${order.order_no}`,
-      html: emailShell(
-        "已收到您的款項",
-        `<p>${order.contact_name} 您好,</p><p>我們已確認收到款項,將盡快為您安排出貨。</p>
+    // Phase F2:依訂單買家 locale 分支中英文(取不到就 zh,與現行行為相同)
+    const orderLocale: Locale = order.locale === "en" ? "en" : "zh";
+    if (orderLocale === "en") {
+      await sendMail({
+        to: order.contact_email,
+        subject: `[Good Days] Payment Received — ${order.order_no}`,
+        html: emailShell(
+          "Payment Received",
+          `<p>Dear ${order.contact_name},</p><p>We've confirmed your payment and will prepare your order for shipping shortly.</p>
+         <p><a href="${siteUrl()}/orders/${order.public_token}">View Order ${order.order_no}</a></p>`,
+          "en"
+        ),
+      });
+    } else {
+      await sendMail({
+        to: order.contact_email,
+        subject: `【好日子】已收到您的款項 ${order.order_no}`,
+        html: emailShell(
+          "已收到您的款項",
+          `<p>${order.contact_name} 您好,</p><p>我們已確認收到款項,將盡快為您安排出貨。</p>
          <p><a href="${siteUrl()}/orders/${order.public_token}">查看訂單 ${order.order_no}</a></p>`
-      ),
-    });
+        ),
+      });
+    }
   }
 
   try {

@@ -8,6 +8,7 @@ import { getQuoteConfig } from "@/lib/settings";
 import { emailShell, sendMail, siteUrl } from "@/lib/resend";
 import { adjustPoints, refundPointsForOrder } from "@/lib/points";
 import { markOrderPaid } from "@/lib/orders";
+import type { Locale } from "@/lib/i18n/config";
 import type { Order, QuoteLineItem } from "@/lib/types";
 
 // 每個 action 都先驗證 admin 身分,再用 service role 寫入
@@ -145,17 +146,47 @@ export async function updateOrderStatus(orderId: string, next: string) {
       body: "您的訂單已取消。若有疑問請與我們聯繫。",
     },
   };
-  const mail = STATUS_MAIL[next];
+  // Phase F2:英文版本,只給下面 orderLocale==="en" 分支用,不影響上面的 zh map
+  const STATUS_MAIL_EN: Record<string, { subject: string; body: string }> = {
+    shipped: {
+      subject: "Order Shipped",
+      body: "Your order has shipped — please look out for delivery!",
+    },
+    completed: {
+      subject: "Order Completed",
+      body: "Your order is complete. Thank you for your support — we hope to serve you again!",
+    },
+    cancelled: {
+      subject: "Order Cancelled",
+      body: "Your order has been cancelled. Please contact us if you have any questions.",
+    },
+  };
+  // 依訂單買家 locale 分支中英文(取不到就 zh,與現行行為相同)
+  const orderLocale: Locale = order.locale === "en" ? "en" : "zh";
+  const mail = orderLocale === "en" ? STATUS_MAIL_EN[next] : STATUS_MAIL[next];
   if (mail && order.contact_email) {
-    await sendMail({
-      to: order.contact_email,
-      subject: `【好日子】${mail.subject} ${order.order_no}`,
-      html: emailShell(
-        `${mail.subject}`,
-        `<p>${order.contact_name} 您好,</p><p>${mail.body}</p>
+    if (orderLocale === "en") {
+      await sendMail({
+        to: order.contact_email,
+        subject: `[Good Days] ${mail.subject} — ${order.order_no}`,
+        html: emailShell(
+          `${mail.subject}`,
+          `<p>Dear ${order.contact_name},</p><p>${mail.body}</p>
+         <p><a href="${siteUrl()}/orders/${order.public_token}">View Order ${order.order_no}</a></p>`,
+          "en"
+        ),
+      });
+    } else {
+      await sendMail({
+        to: order.contact_email,
+        subject: `【好日子】${mail.subject} ${order.order_no}`,
+        html: emailShell(
+          `${mail.subject}`,
+          `<p>${order.contact_name} 您好,</p><p>${mail.body}</p>
          <p><a href="${siteUrl()}/orders/${order.public_token}">查看訂單 ${order.order_no}</a></p>`
-      ),
-    });
+        ),
+      });
+    }
   }
 
   revalidatePath("/admin/orders");

@@ -171,6 +171,7 @@ export default function CheckoutForm({
           },
           payment_method: paymentMethod,
           pointsUsed,
+          locale,
         }),
       });
       const data = await res.json();

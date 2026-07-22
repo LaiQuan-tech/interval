@@ -6,12 +6,17 @@ import { getCompanyProfile, getShippingConfig } from "@/lib/settings";
 import {
   formatDate,
   formatTWD,
+  getPaymentMethodLabel,
+  getPurchaseModeLabel,
+  getShippingMethodLabel,
+  localizeText,
   PAYMENT_METHOD_LABEL,
   PURCHASE_MODE_LABEL,
   SHIPPING_METHOD_LABEL,
 } from "@/lib/format";
 import { getPointsBalance, redeemPointsForOrder } from "@/lib/points";
 import { createPayment, isCardPaymentAvailable } from "@/lib/payments";
+import { isLocale, type Locale } from "@/lib/i18n/config";
 import type { InvoiceType, PurchaseMode, ShippingMethod } from "@/lib/types";
 
 const PHONE_RE = /^09\d{8}$/;
@@ -49,6 +54,7 @@ type CheckoutBody = {
   };
   payment_method: string;
   pointsUsed?: number;
+  locale?: string;
 };
 
 const VALID_MODES: PurchaseMode[] = ["buyout", "rental", "journey", "membership"];
@@ -108,12 +114,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "缺少必要欄位或格式錯誤" }, { status: 400 });
   }
 
+  // Phase F1:買家下單當下的介面語系,未帶值一律 zh(既有前端呼叫端零改動 → 行為不變)
+  const requestLocale: Locale = isLocale(body.locale ?? "") ? (body.locale as Locale) : "zh";
+
   // 價格一律以資料庫為準,不信任前端
   const ids = items.map((i) => i.productId);
   const { data: products, error: prodErr } = await supabase
     .from("products")
     .select(
-      "id, name, price, price_rental_monthly, stock, status, product_type, metadata"
+      "id, name, name_en, price, price_rental_monthly, stock, status, product_type, metadata"
     )
     .in("id", ids);
   if (prodErr) {
@@ -171,7 +180,9 @@ export async function POST(req: NextRequest) {
 
     lineItems.push({
       product_id: p.id,
-      name: p.name,
+      // Phase F1:依買家下單當下語系存快照名稱;未翻譯(name_en null)fallback 中文,
+      // 中文買家(requestLocale="zh")一律走 p.name,行為與現在逐字相同。
+      name: localizeText(p.name, p.name_en, requestLocale),
       unit_price: unitPrice,
       quantity,
       purchase_mode: mode,
@@ -304,6 +315,7 @@ export async function POST(req: NextRequest) {
       payment_method: paymentMethod,
       note: (contact.note ?? "").slice(0, 1000),
       idempotency_key: idempotencyKey,
+      locale: requestLocale,
     })
     .select("*")
     .single();
@@ -419,18 +431,58 @@ export async function POST(req: NextRequest) {
          <br/>應付金額:${formatTWD(order.total)}<br/>匯款期限:${formatDate(deadline)} 前</p>`
       : "";
 
-  await sendMail({
-    to: order.contact_email,
-    subject: `【好日子】訂單成立 ${order.order_no}`,
-    html: emailShell(
-      `訂單 ${order.order_no} 已成立`,
-      `<p>${order.contact_name} 您好,感謝您的訂購!</p>
+  // Phase F2:客戶信依 order.locale 分支——下面這組英文版本只給客戶信英文分支用;
+  // notifyAdmin(下方)與 zh 客戶信一律沿用上面那組 itemRows/shippingRow/pointsRow/bankInfo
+  // (完全未改動),保證店主信與中文客戶信 byte 不變。
+  const orderLocale: Locale = order.locale === "en" ? "en" : "zh";
+  const itemRowsEn = lineItems
+    .map(
+      (i) =>
+        `<tr><td style="padding:6px 0;">${i.name}(${getPurchaseModeLabel(i.purchase_mode, "en")}) × ${i.quantity}</td><td style="text-align:right;">${formatTWD(i.unit_price * i.quantity, "en")}</td></tr>`
+    )
+    .join("");
+  const shippingRowEn =
+    shippingFee > 0
+      ? `<tr><td style="padding:6px 0;">Shipping (${getShippingMethodLabel(shippingMethod, "en")})</td><td style="text-align:right;">${formatTWD(shippingFee, "en")}</td></tr>`
+      : "";
+  const pointsRowEn =
+    pointsUsed > 0
+      ? `<tr><td style="padding:6px 0;">Points Redeemed</td><td style="text-align:right;">-${formatTWD(pointsUsed, "en")}</td></tr>`
+      : "";
+  const bankInfoEn =
+    paymentMethod === "bank_transfer" && company.bank_info
+      ? `<p style="background:#f4ede0;border-radius:4px;padding:12px;margin-top:16px;">Bank Transfer Details:<br/>${company.bank_info.replace(/\n/g, "<br/>")}
+         <br/>Amount Due: ${formatTWD(order.total, "en")}<br/>Payment Deadline: ${formatDate(deadline, "en")}</p>`
+      : "";
+
+  if (orderLocale === "en") {
+    await sendMail({
+      to: order.contact_email,
+      subject: `[Good Days] Order Confirmed — ${order.order_no}`,
+      html: emailShell(
+        `Order ${order.order_no} Confirmed`,
+        `<p>Dear ${order.contact_name}, thank you for your order!</p>
+       <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:8px;">${itemRowsEn}${shippingRowEn}${pointsRowEn}</table>
+       <p style="font-weight:700;margin-top:12px;">Total ${formatTWD(order.total, "en")} (${getPaymentMethodLabel(paymentMethod, "en")})</p>
+       ${bankInfoEn}
+       <p style="margin-top:16px;"><a href="${siteUrl()}/orders/${order.public_token}">View Order Status</a></p>`,
+        "en"
+      ),
+    });
+  } else {
+    await sendMail({
+      to: order.contact_email,
+      subject: `【好日子】訂單成立 ${order.order_no}`,
+      html: emailShell(
+        `訂單 ${order.order_no} 已成立`,
+        `<p>${order.contact_name} 您好,感謝您的訂購!</p>
        <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:8px;">${itemRows}${shippingRow}${pointsRow}</table>
        <p style="font-weight:700;margin-top:12px;">合計 ${formatTWD(order.total)}(${PAYMENT_METHOD_LABEL[paymentMethod]})</p>
        ${bankInfo}
        <p style="margin-top:16px;"><a href="${siteUrl()}/orders/${order.public_token}">查看訂單狀態</a></p>`
-    ),
-  });
+      ),
+    });
+  }
   await notifyAdmin(
     `新訂單 ${order.order_no}(${formatTWD(order.total)})`,
     emailShell(

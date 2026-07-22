@@ -5,14 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useTranslations } from "@/lib/i18n/context";
 import { localeHref } from "@/lib/i18n/href";
+import type { Messages } from "@/lib/i18n/messages";
 
-// 此元件文案本身尚未 i18n(既有狀態,Phase G 範圍外);但 login/page.tsx 在
-// (storefront) layout 底下,已包在 I18nProvider 內,呼叫 useTranslations() 安全——
-// 這裡只借 locale 修正下面兩處 router.push,不動任何顯示文字。
 export default function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { locale } = useTranslations();
+  const { locale, messages } = useTranslations();
   // redirect 若來自 middleware 的未登入導轉,本身已經是帶 /en 前綴的完整路徑
   // (見 middleware.ts:login.searchParams.set("redirect", pathname));localeHref
   // 對已有 /en 前綴的路徑會原樣放行,不會疊加成 /en/en/...。
@@ -35,19 +33,19 @@ export default function AuthForm() {
     try {
       if (mode === "register") {
         if (form.password.length < 8) {
-          throw new Error("密碼至少 8 碼");
+          throw new Error(messages.auth.errors.passwordTooShort);
         }
         const { data, error } = await supabase.auth.signUp({
           email: form.email,
           password: form.password,
           options: { data: { name: form.name } },
         });
-        if (error) throw new Error(mapAuthError(error.message));
+        if (error) throw new Error(mapAuthError(error.message, messages));
         if (data.session) {
           router.push(redirect);
           router.refresh();
         } else {
-          setInfo("註冊成功!請到信箱點擊確認連結後再登入。");
+          setInfo(messages.auth.registerSuccess);
           setMode("login");
         }
       } else {
@@ -55,12 +53,12 @@ export default function AuthForm() {
           email: form.email,
           password: form.password,
         });
-        if (error) throw new Error(mapAuthError(error.message));
+        if (error) throw new Error(mapAuthError(error.message, messages));
         router.push(redirect);
         router.refresh();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "發生錯誤,請再試一次");
+      setError(err instanceof Error ? err.message : messages.auth.errors.generic);
     } finally {
       setLoading(false);
     }
@@ -80,7 +78,7 @@ export default function AuthForm() {
               mode === m ? "bg-ink-deep text-cream-text" : "text-ink-soft"
             }`}
           >
-            {m === "login" ? "登入" : "註冊"}
+            {m === "login" ? messages.auth.loginTab : messages.auth.registerTab}
           </button>
         ))}
       </div>
@@ -88,7 +86,7 @@ export default function AuthForm() {
       <form onSubmit={submit} className="space-y-4">
         {mode === "register" && (
           <div>
-            <label className="iv-label" htmlFor="auth-name">姓名</label>
+            <label className="iv-label" htmlFor="auth-name">{messages.auth.nameLabel}</label>
             <input
               id="auth-name"
               required
@@ -112,7 +110,8 @@ export default function AuthForm() {
         </div>
         <div>
           <label className="iv-label" htmlFor="auth-password">
-            密碼{mode === "register" && <span className="text-xs">(至少 8 碼)</span>}
+            {messages.auth.passwordLabel}
+            {mode === "register" && <span className="text-xs">{messages.auth.passwordHint}</span>}
           </label>
           <input
             id="auth-password"
@@ -131,17 +130,21 @@ export default function AuthForm() {
         {info && <p className="rounded-lg bg-ok-soft p-3 text-sm text-ok">{info}</p>}
 
         <button type="submit" disabled={loading} className="iv-btn-primary w-full">
-          {loading ? "處理中…" : mode === "login" ? "登入" : "建立帳號"}
+          {loading
+            ? messages.auth.submitting
+            : mode === "login"
+              ? messages.auth.submitLogin
+              : messages.auth.submitRegister}
         </button>
       </form>
     </div>
   );
 }
 
-function mapAuthError(message: string) {
-  if (/invalid login credentials/i.test(message)) return "帳號或密碼錯誤";
-  if (/already registered/i.test(message)) return "此 email 已註冊過,請直接登入";
-  if (/email not confirmed/i.test(message)) return "請先到信箱完成 email 確認";
-  if (/rate limit/i.test(message)) return "嘗試次數過多,請稍後再試";
+function mapAuthError(message: string, messages: Messages) {
+  if (/invalid login credentials/i.test(message)) return messages.auth.errors.invalidCredentials;
+  if (/already registered/i.test(message)) return messages.auth.errors.alreadyRegistered;
+  if (/email not confirmed/i.test(message)) return messages.auth.errors.emailNotConfirmed;
+  if (/rate limit/i.test(message)) return messages.auth.errors.rateLimited;
   return message;
 }

@@ -17,6 +17,34 @@ const TAIWAN_COUNTIES = [
   "宜蘭縣", "花蓮縣", "台東縣", "澎湖縣", "金門縣", "連江縣",
 ];
 
+// 收件地址一律是台灣國內配送,縣市 <option value> 必須維持中文(後端運費計算、訂單、
+// 出貨標籤都比對這個值,見下面 200 行左右的 order 建立邏輯)——這裡只把「顯示給使用者看」
+// 的文字依 locale 換成英文,value 不變,不影響任何既有邏輯。
+const TAIWAN_COUNTY_EN: Record<string, string> = {
+  "台北市": "Taipei City",
+  "新北市": "New Taipei City",
+  "基隆市": "Keelung City",
+  "桃園市": "Taoyuan City",
+  "新竹市": "Hsinchu City",
+  "新竹縣": "Hsinchu County",
+  "苗栗縣": "Miaoli County",
+  "台中市": "Taichung City",
+  "彰化縣": "Changhua County",
+  "南投縣": "Nantou County",
+  "雲林縣": "Yunlin County",
+  "嘉義市": "Chiayi City",
+  "嘉義縣": "Chiayi County",
+  "台南市": "Tainan City",
+  "高雄市": "Kaohsiung City",
+  "屏東縣": "Pingtung County",
+  "宜蘭縣": "Yilan County",
+  "花蓮縣": "Hualien County",
+  "台東縣": "Taitung County",
+  "澎湖縣": "Penghu County",
+  "金門縣": "Kinmen County",
+  "連江縣": "Lienchiang County",
+};
+
 const PHONE_RE = /^09\d{8}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CARRIER_RE = /^\/[0-9A-Z.+-]{7}$/;
@@ -293,7 +321,7 @@ export default function CheckoutForm({
                     >
                       <option value="">{t.countyPlaceholder}</option>
                       {TAIWAN_COUNTIES.map((c) => (
-                        <option key={c} value={c}>{c}</option>
+                        <option key={c} value={c}>{locale === "en" ? TAIWAN_COUNTY_EN[c] : c}</option>
                       ))}
                     </select>
                     {errors.county && <p className="mt-1 text-xs text-danger">{errors.county}</p>}

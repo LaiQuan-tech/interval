@@ -1,55 +1,57 @@
 import Link from "next/link";
-import { getLocale } from "@/lib/i18n/server";
+import { getLocale, getMessages } from "@/lib/i18n/server";
 import { localeHref } from "@/lib/i18n/href";
+import type { Metadata } from "next";
 
-export const metadata = { title: "租賃 · 買斷" };
-
-const PLANS = [
-  {
-    key: "rental",
-    eyebrow: "Rental",
-    title: "月租方案",
-    price: "NT$580",
-    priceNote: "起 / 月",
-    perks: ["每季可更換一次畫作", "含裝裱、運送與到府安裝", "專人保養與保險", "隨時可升級買斷"],
-    dark: false,
-    tag: null,
-  },
-  {
-    key: "rent-to-own",
-    eyebrow: "Rent to Own",
-    title: "先租後買",
-    price: "NT$780",
-    priceNote: "起 / 月",
-    perks: ["月租金 100% 折抵買斷價", "12 個月內完成買斷免手續費", "含裝裱、運送與到府安裝", "會員再享點數回饋"],
-    dark: true,
-    tag: "最受歡迎",
-  },
-  {
-    key: "purchase",
-    eyebrow: "Purchase",
-    title: "直接買斷",
-    price: "NT$9,600",
-    priceNote: "起",
-    perks: ["永久擁有，附收藏證書", "含裝裱、運送與到府安裝", "會員折扣最高 15%", "可預約更換裝裱樣式"],
-    dark: false,
-    tag: null,
-  },
-];
+export async function generateMetadata(): Promise<Metadata> {
+  const messages = getMessages(await getLocale());
+  return { title: messages.rental.metaTitle };
+}
 
 export default async function RentalPage() {
-  // 這頁文案本身尚未 i18n(既有狀態,Phase G 範圍外——見交接說明);這裡只補上
-  // /booking 連結的 locale 前綴,避免英文站點進來後掉回無前綴路徑、語系被重置成中文。
   const locale = await getLocale();
+  const messages = getMessages(locale);
+  const PLANS = [
+    {
+      key: "rental",
+      eyebrow: "Rental",
+      price: "NT$580",
+      dark: false,
+      title: messages.rental.plans.rental.title,
+      priceNote: messages.rental.plans.rental.priceNote,
+      perks: messages.rental.plans.rental.perks,
+      tag: null as string | null,
+    },
+    {
+      key: "rent-to-own",
+      eyebrow: "Rent to Own",
+      price: "NT$780",
+      dark: true,
+      title: messages.rental.plans.rentToOwn.title,
+      priceNote: messages.rental.plans.rentToOwn.priceNote,
+      perks: messages.rental.plans.rentToOwn.perks,
+      tag: messages.rental.plans.rentToOwn.tag as string | null,
+    },
+    {
+      key: "purchase",
+      eyebrow: "Purchase",
+      price: "NT$9,600",
+      dark: false,
+      title: messages.rental.plans.purchase.title,
+      priceNote: messages.rental.plans.purchase.priceNote,
+      perks: messages.rental.plans.purchase.perks,
+      tag: null as string | null,
+    },
+  ];
   return (
     <div>
       <div className="lm-container pt-16 pb-8 text-center sm:pt-20">
-        <div className="lm-eyebrow text-[20px]">Rent, or make it yours</div>
+        <div className="lm-eyebrow text-[20px]">{messages.rental.heroEyebrow}</div>
         <h1 className="mt-3.5 mb-4 font-serif text-[27px] font-normal tracking-[0.04em] text-ink sm:text-[52px]">
-          租賃 · 買斷
+          {messages.rental.title}
         </h1>
         <p className="mx-auto max-w-140 text-[15.5px] leading-[2] text-ink-soft">
-          用彈性的方式收藏藝術。先以月租體驗，隨時可升級為買斷；已付租金按比例折抵。
+          {messages.rental.desc}
         </p>
       </div>
 
@@ -92,14 +94,14 @@ export default async function RentalPage() {
         <div className="flex flex-col items-start gap-8 bg-panel p-8.5 sm:flex-row sm:items-center sm:justify-between sm:p-14">
           <div>
             <h3 className="mb-3 font-serif text-[24px] font-normal text-ink sm:text-[28px]">
-              不確定哪一幅適合您的空間？
+              {messages.rental.consultTitle}
             </h3>
             <p className="max-w-130 text-[14.5px] leading-[1.9] text-ink-soft">
-              預約到府顧問服務，我們帶著樣品與色卡到府，為您的牆面挑選最合適的作品與裝裱。
+              {messages.rental.consultDesc}
             </p>
           </div>
           <Link href={localeHref("/booking", locale)} className="iv-btn-primary whitespace-nowrap">
-            預約到府顧問
+            {messages.rental.consultCta}
           </Link>
         </div>
       </div>

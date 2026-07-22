@@ -92,6 +92,33 @@ const zh = {
     consultCta: "預約專屬旅程諮詢",
     customPrompt: "想要完全客製？跟 AI 顧問聊聊您的靈感。",
   },
+  rental: {
+    metaTitle: "租賃 · 買斷",
+    heroEyebrow: "Rent, or make it yours",
+    title: "租賃 · 買斷",
+    desc: "用彈性的方式收藏藝術。先以月租體驗，隨時可升級為買斷；已付租金按比例折抵。",
+    plans: {
+      rental: {
+        title: "月租方案",
+        priceNote: "起 / 月",
+        perks: ["每季可更換一次畫作", "含裝裱、運送與到府安裝", "專人保養與保險", "隨時可升級買斷"],
+      },
+      rentToOwn: {
+        title: "先租後買",
+        priceNote: "起 / 月",
+        tag: "最受歡迎",
+        perks: ["月租金 100% 折抵買斷價", "12 個月內完成買斷免手續費", "含裝裱、運送與到府安裝", "會員再享點數回饋"],
+      },
+      purchase: {
+        title: "直接買斷",
+        priceNote: "起",
+        perks: ["永久擁有，附收藏證書", "含裝裱、運送與到府安裝", "會員折扣最高 15%", "可預約更換裝裱樣式"],
+      },
+    },
+    consultTitle: "不確定哪一幅適合您的空間？",
+    consultDesc: "預約到府顧問服務，我們帶著樣品與色卡到府，為您的牆面挑選最合適的作品與裝裱。",
+    consultCta: "預約到府顧問",
+  },
   membership: {
     title: "會員沙龍",
     eyebrow: "The Membership Salon",
@@ -432,6 +459,25 @@ const zh = {
   login: {
     title: "會員登入",
     desc: "登入後可追蹤訂單、快速結帳、查看專屬報價與點數",
+  },
+  auth: {
+    loginTab: "登入",
+    registerTab: "註冊",
+    nameLabel: "姓名",
+    passwordLabel: "密碼",
+    passwordHint: "(至少 8 碼)",
+    submitLogin: "登入",
+    submitRegister: "建立帳號",
+    submitting: "處理中…",
+    registerSuccess: "註冊成功!請到信箱點擊確認連結後再登入。",
+    errors: {
+      passwordTooShort: "密碼至少 8 碼",
+      invalidCredentials: "帳號或密碼錯誤",
+      alreadyRegistered: "此 email 已註冊過,請直接登入",
+      emailNotConfirmed: "請先到信箱完成 email 確認",
+      rateLimited: "嘗試次數過多,請稍後再試",
+      generic: "發生錯誤,請再試一次",
+    },
   },
   quoteInfo: {
     metaTitle: "客製報價 / AI 顧問",

@@ -96,6 +96,49 @@ const en: Messages = {
     consultCta: "Book a Journey Consultation",
     customPrompt: "Want something fully bespoke? Chat with our AI advisor about your inspiration.",
   },
+  rental: {
+    metaTitle: "Rent · Own",
+    heroEyebrow: "Rent, or make it yours",
+    title: "Rent · Own",
+    desc: "Collect art on your terms. Start with a monthly rental, upgrade to ownership anytime — rent paid is credited toward the purchase price.",
+    plans: {
+      rental: {
+        title: "Monthly Rental",
+        priceNote: "from / mo",
+        perks: [
+          "Swap your artwork once per season",
+          "Framing, delivery, and in-home installation included",
+          "Professional upkeep and insurance",
+          "Upgrade to ownership anytime",
+        ],
+      },
+      rentToOwn: {
+        title: "Rent to Own",
+        priceNote: "from / mo",
+        tag: "Most Popular",
+        perks: [
+          "100% of rent credited toward the purchase price",
+          "No fees if you buy out within 12 months",
+          "Framing, delivery, and in-home installation included",
+          "Members earn extra point rewards",
+        ],
+      },
+      purchase: {
+        title: "Purchase Outright",
+        priceNote: "from",
+        perks: [
+          "Own it permanently, with a certificate of collection",
+          "Framing, delivery, and in-home installation included",
+          "Member discounts up to 15%",
+          "Reframing available by appointment",
+        ],
+      },
+    },
+    consultTitle: "Not sure which piece suits your space?",
+    consultDesc:
+      "Book an in-home advisory visit — we'll bring samples and color swatches to help you choose the perfect artwork and framing for your wall.",
+    consultCta: "Book an In-Home Consultation",
+  },
   membership: {
     title: "Membership Salon",
     eyebrow: "The Membership Salon",
@@ -443,6 +486,25 @@ const en: Messages = {
   login: {
     title: "Member Login",
     desc: "Sign in to track your orders, check out faster, and view your personal quotes and points.",
+  },
+  auth: {
+    loginTab: "Log In",
+    registerTab: "Sign Up",
+    nameLabel: "Name",
+    passwordLabel: "Password",
+    passwordHint: "(at least 8 characters)",
+    submitLogin: "Log In",
+    submitRegister: "Create Account",
+    submitting: "Processing…",
+    registerSuccess: "Registration successful! Please check your email and click the confirmation link before logging in.",
+    errors: {
+      passwordTooShort: "Password must be at least 8 characters",
+      invalidCredentials: "Incorrect email or password",
+      alreadyRegistered: "This email is already registered — please log in instead.",
+      emailNotConfirmed: "Please confirm your email first",
+      rateLimited: "Too many attempts — please try again later",
+      generic: "Something went wrong, please try again",
+    },
   },
   quoteInfo: {
     metaTitle: "Custom Quote / AI Advisor",

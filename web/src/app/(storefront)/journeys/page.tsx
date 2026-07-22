@@ -6,6 +6,7 @@ import Placeholder from "@/components/Placeholder";
 import QuickAddButton from "@/components/QuickAddButton";
 import OpenChatButton from "@/components/OpenChatButton";
 import { getLocale, getMessages } from "@/lib/i18n/server";
+import { localeHref } from "@/lib/i18n/href";
 import type { Product } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -131,7 +132,7 @@ export default async function JourneysPage() {
         )}
 
         <div className="mt-14 text-center sm:mt-16">
-          <Link href="/booking" className="iv-btn-primary">
+          <Link href={localeHref("/booking", locale)} className="iv-btn-primary">
             {messages.journeys.consultCta}
           </Link>
           <div className="mt-8 flex flex-col items-center gap-3">

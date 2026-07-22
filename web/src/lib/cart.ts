@@ -7,6 +7,11 @@ export type CartItem = {
   productId: string;
   slug: string;
   name: string;
+  // Phase G:加入購物車當下把 name_en 也一併存進去,渲染時用 localizeText(name, name_en, locale)
+  // 依「當下瀏覽語系」選字——而不是在 addToCart 當下就依 locale 寫死選好的名字。
+  // 這樣使用者中途切換語系,購物車裡舊加入的品項名稱也會跟著正確顯示,不會卡在加入當下的語言。
+  // 選填、可為 null/undefined(舊資料或尚未翻譯):UI 端一律 fallback 回中文 name,不會壞畫面。
+  name_en?: string | null;
   price: number; // 該購買模式下的單價(買斷價/月租價/旅程價/會員年費)
   mode: PurchaseMode;
   image?: string;

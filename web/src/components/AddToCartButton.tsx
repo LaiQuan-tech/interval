@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { addToCart, openCart } from "@/lib/cart";
 import { useTranslations } from "@/lib/i18n/context";
+import { localeHref } from "@/lib/i18n/href";
 import type { PurchaseMode } from "@/lib/types";
 
-type MinimalProduct = { id: string; slug: string; name: string };
+type MinimalProduct = { id: string; slug: string; name: string; name_en?: string | null };
 
 // 通用加入購物車按鈕:作品(買斷/月租)、旅程、會員方案皆共用,由呼叫端決定 mode 與該模式下的單價
 // 唯一呼叫端是 ArtworkPurchaseSection(作品詳情頁),admin 不引用此元件,故內部直接吃 i18n context;
@@ -31,7 +32,7 @@ export default function AddToCartButton({
   disabledLabel?: string;
 }) {
   const router = useRouter();
-  const { messages } = useTranslations();
+  const { locale, messages } = useTranslations();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const resolvedCtaLabel = ctaLabel ?? messages.product.addToCart;
@@ -44,13 +45,14 @@ export default function AddToCartButton({
         productId: product.id,
         slug: product.slug,
         name: product.name,
+        name_en: product.name_en,
         price: unitPrice,
         mode,
       },
       quantity
     );
     if (goCheckout) {
-      router.push("/cart");
+      router.push(localeHref("/cart", locale));
     } else {
       openCart();
       setAdded(true);

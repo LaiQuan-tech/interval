@@ -14,7 +14,7 @@ export default function QuickAddButton({
   className = "",
   onAdded,
 }: {
-  product: { id: string; slug: string; name: string };
+  product: { id: string; slug: string; name: string; name_en?: string | null };
   mode: PurchaseMode;
   unitPrice: number;
   label?: string;
@@ -28,7 +28,14 @@ export default function QuickAddButton({
     <button
       onClick={() => {
         addToCart(
-          { productId: product.id, slug: product.slug, name: product.name, price: unitPrice, mode },
+          {
+            productId: product.id,
+            slug: product.slug,
+            name: product.name,
+            name_en: product.name_en,
+            price: unitPrice,
+            mode,
+          },
           1
         );
         openCart();

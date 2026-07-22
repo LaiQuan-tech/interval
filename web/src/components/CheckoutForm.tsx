@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cartSubtotal, clearCart, isPhysicalItem, readCart, type CartItem } from "@/lib/cart";
-import { formatTWD, getPurchaseModeLabel } from "@/lib/format";
+import { formatTWD, getPurchaseModeLabel, localizeText } from "@/lib/format";
 import { createClient } from "@/lib/supabase/client";
 import { useTranslations } from "@/lib/i18n/context";
+import { localeHref } from "@/lib/i18n/href";
 import type { CompanyProfile, ShippingConfig } from "@/lib/settings";
 
 const TAIWAN_COUNTIES = [
@@ -183,7 +184,7 @@ export default function CheckoutForm({
         return;
       }
       clearCart();
-      router.push(`/orders/${data.orderToken}?created=1`);
+      router.push(localeHref(`/orders/${data.orderToken}?created=1`, locale));
     } catch (err) {
       setError(err instanceof Error ? err.message : t.orderCreateFailed);
       setSubmitting(false);
@@ -197,7 +198,7 @@ export default function CheckoutForm({
       <div className="lm-container py-14">
         <div className="iv-card flex flex-col items-center gap-4 py-14 text-center">
           <p className="text-ink-soft">{t.emptyCart}</p>
-          <Link href="/gallery" className="iv-btn-primary">
+          <Link href={localeHref("/gallery", locale)} className="iv-btn-primary">
             {t.browseCollection}
           </Link>
         </div>
@@ -493,7 +494,7 @@ export default function CheckoutForm({
             {items.map((i) => (
               <li key={`${i.productId}-${i.mode}`} className="flex justify-between gap-2">
                 <span className="line-clamp-1 text-ink-soft">
-                  {i.name}
+                  {localizeText(i.name, i.name_en, locale)}
                   <span className="ml-1 text-[11px] text-accent">
                     ({getPurchaseModeLabel(i.mode, locale)})
                   </span>

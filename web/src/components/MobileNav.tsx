@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import LocaleSwitcher from "@/components/LocaleSwitcher";
 import { NAV_ITEMS } from "@/components/NavLinks";
 import { useTranslations } from "@/lib/i18n/context";
+import { localeHref, stripLocalePrefix } from "@/lib/i18n/href";
 
 export default function MobileNav({
   loggedIn,
@@ -16,7 +17,8 @@ export default function MobileNav({
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname() ?? "/";
-  const { messages } = useTranslations();
+  const { locale, messages } = useTranslations();
+  const cleanPathname = stripLocalePrefix(pathname);
 
   return (
     <div className="lg:hidden">
@@ -47,16 +49,16 @@ export default function MobileNav({
             {NAV_ITEMS.map((item) => (
               <Link
                 key={item.href}
-                href={item.href}
+                href={localeHref(item.href, locale)}
                 onClick={() => setOpen(false)}
-                data-active={item.match(pathname)}
+                data-active={item.match(cleanPathname)}
                 className="border-b border-line/60 py-3.5 tracking-[0.04em] text-nav last:border-0 data-[active=true]:text-accent"
               >
                 {messages.nav[item.labelKey]}
               </Link>
             ))}
             <Link
-              href="/booking"
+              href={localeHref("/booking", locale)}
               onClick={() => setOpen(false)}
               className="border-b border-line/60 py-3.5 font-medium tracking-[0.04em] text-ink-deep"
             >
@@ -64,7 +66,7 @@ export default function MobileNav({
             </Link>
             {loggedIn ? (
               <Link
-                href="/account"
+                href={localeHref("/account", locale)}
                 onClick={() => setOpen(false)}
                 className="border-b border-line/60 py-3.5 tracking-[0.04em] text-nav"
               >
@@ -72,7 +74,7 @@ export default function MobileNav({
               </Link>
             ) : (
               <Link
-                href="/login"
+                href={localeHref("/login", locale)}
                 onClick={() => setOpen(false)}
                 className="border-b border-line/60 py-3.5 tracking-[0.04em] text-nav"
               >

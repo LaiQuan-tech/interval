@@ -11,9 +11,10 @@ import {
   updateQuantity,
   type CartItem,
 } from "@/lib/cart";
-import { formatTWD, getPurchaseModeLabel } from "@/lib/format";
+import { formatTWD, getPurchaseModeLabel, localizeText } from "@/lib/format";
 import Placeholder, { gradientForId } from "@/components/Placeholder";
 import { useTranslations } from "@/lib/i18n/context";
+import { localeHref } from "@/lib/i18n/href";
 
 // 右側滑出的購物車抽屜。自寫 fixed overlay + transform,不引入 shadcn,維持象牙沙龍視覺。
 // 開啟時機:加入購物車後(CART_OPEN_EVENT)自動滑出;Header 的購物車圖示點擊也會觸發。
@@ -100,7 +101,7 @@ export default function CartFlyout({
         {items.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
             <p className="text-ink-soft">{t.empty}</p>
-            <Link href="/gallery" onClick={() => setOpen(false)} className="iv-btn-primary">
+            <Link href={localeHref("/gallery", locale)} onClick={() => setOpen(false)} className="iv-btn-primary">
               {t.browseCollection}
             </Link>
           </div>
@@ -136,7 +137,9 @@ export default function CartFlyout({
                     <div className="flex flex-1 flex-col justify-between">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className="line-clamp-2 text-sm font-medium text-ink">{item.name}</p>
+                          <p className="line-clamp-2 text-sm font-medium text-ink">
+                            {localizeText(item.name, item.name_en, locale)}
+                          </p>
                           <span className="mt-0.5 inline-block text-[11px] text-accent">
                             {getPurchaseModeLabel(item.mode, locale)}
                           </span>
@@ -190,12 +193,12 @@ export default function CartFlyout({
                 <button type="button" onClick={() => setOpen(false)} className="iv-btn-ghost">
                   {t.continueShopping}
                 </button>
-                <Link href="/checkout" onClick={() => setOpen(false)} className="iv-btn-primary">
+                <Link href={localeHref("/checkout", locale)} onClick={() => setOpen(false)} className="iv-btn-primary">
                   {t.proceedToCheckout}
                 </Link>
               </div>
               <Link
-                href="/cart"
+                href={localeHref("/cart", locale)}
                 onClick={() => setOpen(false)}
                 className="block text-center text-xs tracking-[0.04em] text-ink-soft underline underline-offset-2"
               >

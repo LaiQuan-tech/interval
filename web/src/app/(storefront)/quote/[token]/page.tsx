@@ -4,6 +4,7 @@ import { markQuoteViewed } from "@/lib/quote";
 import { formatDate, formatTWD, getQuoteStatusLabel } from "@/lib/format";
 import AcceptQuoteButton from "@/components/AcceptQuoteButton";
 import { getLocale, getMessages } from "@/lib/i18n/server";
+import { localeHref } from "@/lib/i18n/href";
 import type { Quote } from "@/lib/types";
 import Link from "next/link";
 
@@ -133,7 +134,7 @@ export default async function QuotePage({
         {quote.status === "expired" && (
           <div className="mt-6 border border-line bg-warn-soft p-4 text-center text-sm text-warn">
             {t.expiredPrefix}
-            <Link href="/quote-info" className="underline">{t.expiredLinkLabel}</Link>
+            <Link href={localeHref("/quote-info", locale)} className="underline">{t.expiredLinkLabel}</Link>
             {t.expiredSuffix}
           </div>
         )}

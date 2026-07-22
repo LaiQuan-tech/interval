@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "@/lib/i18n/context";
+import { localeHref, stripLocalePrefix } from "@/lib/i18n/href";
 import type { Messages } from "@/lib/i18n/messages";
 
 // label 改成 nav messages 的 key(labelKey),實際文字由 render 端依目前語系從
@@ -22,15 +23,18 @@ export const NAV_ITEMS: {
 
 export default function NavLinks({ className = "" }: { className?: string }) {
   const pathname = usePathname() ?? "/";
-  const { messages } = useTranslations();
+  const { locale, messages } = useTranslations();
+  // NAV_ITEMS.match() 全部寫死不帶前綴的路徑,/en 站下 usePathname() 回傳的是
+  // "/en/gallery" 之類——比對前先去掉前綴,不然 active 高亮在英文站永遠失效。
+  const cleanPathname = stripLocalePrefix(pathname);
 
   return (
     <>
       {NAV_ITEMS.map((item) => (
         <Link
           key={item.href}
-          href={item.href}
-          data-active={item.match(pathname)}
+          href={localeHref(item.href, locale)}
+          data-active={item.match(cleanPathname)}
           className={`lm-nav-link ${className}`}
         >
           {messages.nav[item.labelKey]}

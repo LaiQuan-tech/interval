@@ -204,3 +204,22 @@ export function localizeList(
   if (locale !== "en") return zh;
   return en && en.length > 0 ? en : zh;
 }
+
+// ---------- Phase G:商品 category 的英文對照 ----------
+// category 是 admin 手動輸入的自由文字(見 admin/ProductForm.tsx 的 <input name="category">),
+// 不是像其他狀態那樣的固定 code,所以用「中文值 → 英文值」直接對照,而非上面 label()
+// 系列的 key→value 模式。查無對照(未收錄的自訂分類)→ locale=en 時仍 fallback 回中文原值,
+// 不留白也不亂猜英文。
+const CATEGORY_LABEL_EN: Record<string, string> = {
+  風景: "Landscape",
+  抽象: "Abstract",
+  靜物: "Still Life",
+  植物: "Botanical",
+  私人旅程: "Private Journey",
+  會員方案: "Membership",
+};
+
+export function getCategoryLabel(category: string, locale: Locale = "zh"): string {
+  if (locale !== "en") return category;
+  return CATEGORY_LABEL_EN[category] ?? category;
+}

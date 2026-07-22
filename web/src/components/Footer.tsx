@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { getLocale, getMessages } from "@/lib/i18n/server";
+import { localeHref } from "@/lib/i18n/href";
 
 export default async function Footer() {
-  const messages = getMessages(await getLocale());
+  const locale = await getLocale();
+  const messages = getMessages(locale);
 
   return (
     <footer className="mt-16">
@@ -20,18 +22,18 @@ export default async function Footer() {
         <div>
           <div className="lm-caption mb-4 text-[12px]">Explore</div>
           <div className="flex flex-col gap-3 text-[13.5px] text-ink-soft">
-            <Link href="/gallery" className="hover:text-accent">{messages.nav.gallery}</Link>
-            <Link href="/journeys" className="hover:text-accent">{messages.nav.journeys}</Link>
-            <Link href="/rental" className="hover:text-accent">{messages.nav.rental}</Link>
+            <Link href={localeHref("/gallery", locale)} className="hover:text-accent">{messages.nav.gallery}</Link>
+            <Link href={localeHref("/journeys", locale)} className="hover:text-accent">{messages.nav.journeys}</Link>
+            <Link href={localeHref("/rental", locale)} className="hover:text-accent">{messages.nav.rental}</Link>
           </div>
         </div>
 
         <div>
           <div className="lm-caption mb-4 text-[12px]">Member</div>
           <div className="flex flex-col gap-3 text-[13.5px] text-ink-soft">
-            <Link href="/membership" className="hover:text-accent">{messages.nav.membership}</Link>
-            <Link href="/booking" className="hover:text-accent">{messages.nav.booking}</Link>
-            <Link href="/membership" className="hover:text-accent">{messages.footer.pointsRedeem}</Link>
+            <Link href={localeHref("/membership", locale)} className="hover:text-accent">{messages.nav.membership}</Link>
+            <Link href={localeHref("/booking", locale)} className="hover:text-accent">{messages.nav.booking}</Link>
+            <Link href={localeHref("/membership", locale)} className="hover:text-accent">{messages.footer.pointsRedeem}</Link>
           </div>
         </div>
 

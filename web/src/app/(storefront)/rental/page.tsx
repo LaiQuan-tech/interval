@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getLocale } from "@/lib/i18n/server";
+import { localeHref } from "@/lib/i18n/href";
 
 export const metadata = { title: "租賃 · 買斷" };
 
@@ -35,7 +37,10 @@ const PLANS = [
   },
 ];
 
-export default function RentalPage() {
+export default async function RentalPage() {
+  // 這頁文案本身尚未 i18n(既有狀態,Phase G 範圍外——見交接說明);這裡只補上
+  // /booking 連結的 locale 前綴,避免英文站點進來後掉回無前綴路徑、語系被重置成中文。
+  const locale = await getLocale();
   return (
     <div>
       <div className="lm-container pt-16 pb-8 text-center sm:pt-20">
@@ -93,7 +98,7 @@ export default function RentalPage() {
               預約到府顧問服務，我們帶著樣品與色卡到府，為您的牆面挑選最合適的作品與裝裱。
             </p>
           </div>
-          <Link href="/booking" className="iv-btn-primary whitespace-nowrap">
+          <Link href={localeHref("/booking", locale)} className="iv-btn-primary whitespace-nowrap">
             預約到府顧問
           </Link>
         </div>

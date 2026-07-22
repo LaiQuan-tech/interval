@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "@/lib/i18n/context";
+import { localeHref } from "@/lib/i18n/href";
 
 export default function AcceptQuoteButton({ token }: { token: string }) {
   const router = useRouter();
-  const { messages } = useTranslations();
+  const { locale, messages } = useTranslations();
   const t = messages.quote;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -26,7 +27,7 @@ export default function AcceptQuoteButton({ token }: { token: string }) {
       if (!res.ok || !data.orderToken) {
         throw new Error(data.error ?? t.acceptError);
       }
-      router.push(`/orders/${data.orderToken}?created=1`);
+      router.push(localeHref(`/orders/${data.orderToken}?created=1`, locale));
     } catch (err) {
       setError(err instanceof Error ? err.message : t.acceptError);
       setLoading(false);

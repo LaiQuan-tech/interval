@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { clearCart } from "@/lib/cart";
 import { useTranslations } from "@/lib/i18n/context";
+import { localeHref } from "@/lib/i18n/href";
 
 // PChomePay 導回頁(return_url)。PChomePay 導回時不帶任何參數,所以 return_url 本身在
 // 建立付款時就已經附上 ?order=<order_no>(見 lib/payments/pchomepay.ts pchomepayReturnUrl)。
@@ -25,7 +26,7 @@ const POLL_INTERVAL_MS = 3000;
 const MAX_ATTEMPTS = 40; // 40 * 3s = 120s
 
 export default function CheckoutConfirmPage() {
-  const { messages } = useTranslations();
+  const { locale, messages } = useTranslations();
   const t = messages.checkout.confirm;
   const [view, setView] = useState<ViewState>("checking");
   const [orderNo, setOrderNo] = useState<string | null>(null);
@@ -117,7 +118,7 @@ export default function CheckoutConfirmPage() {
             <p className="text-sm text-ink-soft">
               {t.paidDescPrefix}{orderNo}{t.paidDescSuffix}
             </p>
-            <Link href="/account" className="iv-btn-primary mt-2">
+            <Link href={localeHref("/account", locale)} className="iv-btn-primary mt-2">
               {t.viewAccount}
             </Link>
           </>
@@ -128,7 +129,7 @@ export default function CheckoutConfirmPage() {
             <h1 className="font-serif text-xl text-ink">{t.failedTitle}</h1>
             <p className="text-sm text-ink-soft">{t.failedDesc}</p>
             <div className="mt-2 flex flex-wrap justify-center gap-3">
-              <Link href="/checkout" className="iv-btn-primary">
+              <Link href={localeHref("/checkout", locale)} className="iv-btn-primary">
                 {t.retryCheckout}
               </Link>
             </div>
@@ -151,7 +152,7 @@ export default function CheckoutConfirmPage() {
                 : t.notFoundNoOrder}
               {" "}{t.notFoundHelp}
             </p>
-            <Link href="/checkout" className="iv-btn-primary mt-2">
+            <Link href={localeHref("/checkout", locale)} className="iv-btn-primary mt-2">
               {t.backToCheckout}
             </Link>
           </>

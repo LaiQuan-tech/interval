@@ -15,6 +15,7 @@ import {
 import ProfileForm from "@/components/ProfileForm";
 import LogoutButton from "@/components/LogoutButton";
 import { getLocale, getMessages } from "@/lib/i18n/server";
+import { localeHref } from "@/lib/i18n/href";
 import type { Order, Profile, Quote } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -80,7 +81,7 @@ export default async function AccountPage() {
               {t.tierRatePrefix}{tier.rebate_rate}{t.tierRateSuffix}
             </p>
           ) : (
-            <Link href="/membership" className="mt-3 inline-block text-[13px] tracking-[0.06em] text-gold-bright border-b border-gold pb-0.5">
+            <Link href={localeHref("/membership", locale)} className="mt-3 inline-block text-[13px] tracking-[0.06em] text-gold-bright border-b border-gold pb-0.5">
               {t.learnMembership}
             </Link>
           )}
@@ -127,7 +128,7 @@ export default async function AccountPage() {
         {typedOrders.length === 0 ? (
           <div className="iv-card flex items-center justify-between text-sm text-ink-soft">
             <span>{t.ordersEmpty}</span>
-            <Link href="/gallery" className="font-semibold text-accent">
+            <Link href={localeHref("/gallery", locale)} className="font-semibold text-accent">
               {t.goBrowse}
             </Link>
           </div>
@@ -136,7 +137,7 @@ export default async function AccountPage() {
             {typedOrders.map((o) => (
               <Link
                 key={o.id}
-                href={`/orders/${o.public_token}`}
+                href={localeHref(`/orders/${o.public_token}`, locale)}
                 className="iv-card flex items-center justify-between gap-3 !p-4 transition-colors hover:border-gold"
               >
                 <div>
@@ -163,7 +164,7 @@ export default async function AccountPage() {
             {typedQuotes.map((q) => (
               <Link
                 key={q.id}
-                href={`/quote/${q.public_token}`}
+                href={localeHref(`/quote/${q.public_token}`, locale)}
                 className="iv-card flex items-center justify-between gap-3 !p-4 transition-colors hover:border-gold"
               >
                 <div>

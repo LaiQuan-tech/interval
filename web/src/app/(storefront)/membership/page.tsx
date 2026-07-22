@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { formatTWD, localizeText, localizeList } from "@/lib/format";
 import QuickAddButton from "@/components/QuickAddButton";
 import { getLocale, getMessages } from "@/lib/i18n/server";
+import { localeHref } from "@/lib/i18n/href";
 import type { MembershipTier, Product } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -132,7 +133,7 @@ export default async function MembershipPage() {
           ))}
         </div>
         <div className="mt-13 text-center">
-          <Link href="/booking" className="iv-btn-primary">
+          <Link href={localeHref("/booking", locale)} className="iv-btn-primary">
             {messages.membership.applyLabel}
           </Link>
         </div>

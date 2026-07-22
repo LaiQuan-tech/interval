@@ -3,11 +3,20 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useTranslations } from "@/lib/i18n/context";
+import { localeHref } from "@/lib/i18n/href";
 
+// 此元件文案本身尚未 i18n(既有狀態,Phase G 範圍外);但 login/page.tsx 在
+// (storefront) layout 底下,已包在 I18nProvider 內,呼叫 useTranslations() 安全——
+// 這裡只借 locale 修正下面兩處 router.push,不動任何顯示文字。
 export default function AuthForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") ?? "/account";
+  const { locale } = useTranslations();
+  // redirect 若來自 middleware 的未登入導轉,本身已經是帶 /en 前綴的完整路徑
+  // (見 middleware.ts:login.searchParams.set("redirect", pathname));localeHref
+  // 對已有 /en 前綴的路徑會原樣放行,不會疊加成 /en/en/...。
+  const redirect = localeHref(searchParams.get("redirect") ?? "/account", locale);
 
   const [mode, setMode] = useState<"login" | "register">("login");
   const [form, setForm] = useState({ email: "", password: "", name: "" });

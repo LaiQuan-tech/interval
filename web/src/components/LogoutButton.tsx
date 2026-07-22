@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Locale } from "@/lib/i18n/config";
+import { localeHref } from "@/lib/i18n/href";
 
 // 共用元件:storefront /account 與 admin(AdminSidebar/AdminBottomNav)都會 render。
 // admin 目前沒有包 I18nProvider,所以這裡刻意不用 useTranslations() context(呼叫會拋錯),
@@ -19,7 +20,7 @@ export default function LogoutButton({ locale = "zh" }: { locale?: Locale }) {
       onClick={async () => {
         const supabase = createClient();
         await supabase.auth.signOut();
-        router.push("/");
+        router.push(localeHref("/", locale));
         router.refresh();
       }}
     >

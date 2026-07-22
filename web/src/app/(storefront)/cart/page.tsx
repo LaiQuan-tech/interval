@@ -9,9 +9,10 @@ import {
   updateQuantity,
   type CartItem,
 } from "@/lib/cart";
-import { formatTWD, getPurchaseModeLabel } from "@/lib/format";
+import { formatTWD, getPurchaseModeLabel, localizeText } from "@/lib/format";
 import Placeholder, { gradientForId } from "@/components/Placeholder";
 import { useTranslations } from "@/lib/i18n/context";
+import { localeHref } from "@/lib/i18n/href";
 
 export default function CartPage() {
   const { locale, messages } = useTranslations();
@@ -36,7 +37,7 @@ export default function CartPage() {
       {!ready ? null : items.length === 0 ? (
         <div className="iv-card mt-8 flex flex-col items-center gap-4 py-14 text-center">
           <p className="text-ink-soft">{t.empty}</p>
-          <Link href="/gallery" className="iv-btn-primary">
+          <Link href={localeHref("/gallery", locale)} className="iv-btn-primary">
             {t.browseCollection}
           </Link>
         </div>
@@ -53,10 +54,10 @@ export default function CartPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <Link
-                        href={`/products/${item.slug}`}
+                        href={localeHref(`/products/${item.slug}`, locale)}
                         className="line-clamp-2 text-sm font-medium text-ink sm:text-base"
                       >
-                        {item.name}
+                        {localizeText(item.name, item.name_en, locale)}
                       </Link>
                       <span className="mt-1 inline-block text-[11px] tracking-[0.04em] text-accent">
                         {getPurchaseModeLabel(item.mode, locale)}
@@ -111,7 +112,7 @@ export default function CartPage() {
               <span>{t.total}</span>
               <span className="font-serif text-[18px] text-ink">{formatTWD(subtotal, locale)}</span>
             </div>
-            <Link href="/checkout" className="iv-btn-primary mt-5 w-full">
+            <Link href={localeHref("/checkout", locale)} className="iv-btn-primary mt-5 w-full">
               {t.proceedToCheckout}
             </Link>
           </div>

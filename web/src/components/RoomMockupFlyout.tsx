@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { formatTWD, getPurchaseModeLabel } from "@/lib/format";
+import { formatTWD, getPurchaseModeLabel, localizeText } from "@/lib/format";
 import { resizeToJpeg, type PendingImage } from "@/lib/image";
 import Placeholder, { gradientForId } from "@/components/Placeholder";
 import QuickAddButton from "@/components/QuickAddButton";
@@ -152,6 +152,7 @@ export default function RoomMockupFlyout({
   }
 
   const hasRental = result?.priceRentalMonthly != null;
+  const displayName = localizeText(product.name, product.name_en, locale);
 
   return (
     <>
@@ -190,7 +191,7 @@ export default function RoomMockupFlyout({
                 gradient={gradientForId(product.id)}
                 className="h-14 w-14 shrink-0"
               />
-              <p className="text-sm font-medium text-ink">{product.name}</p>
+              <p className="text-sm font-medium text-ink">{displayName}</p>
             </div>
           )}
 
@@ -282,7 +283,7 @@ export default function RoomMockupFlyout({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={result.mockupUrl}
-                    alt={`${product.name} ${messages.mockup.mockupAltSuffix}`}
+                    alt={`${displayName} ${messages.mockup.mockupAltSuffix}`}
                     className="w-full"
                     onError={() => setImgExpired(true)}
                   />
@@ -306,7 +307,7 @@ export default function RoomMockupFlyout({
                 {hasRental ? (
                   <div className="flex gap-2">
                     <QuickAddButton
-                      product={{ id: result.productId, slug: product.slug, name: product.name }}
+                      product={{ id: result.productId, slug: product.slug, name: product.name, name_en: product.name_en }}
                       mode="buyout"
                       unitPrice={result.price}
                       label={getPurchaseModeLabel("buyout", locale)}
@@ -315,7 +316,7 @@ export default function RoomMockupFlyout({
                       className="iv-btn-primary flex-1"
                     />
                     <QuickAddButton
-                      product={{ id: result.productId, slug: product.slug, name: product.name }}
+                      product={{ id: result.productId, slug: product.slug, name: product.name, name_en: product.name_en }}
                       mode="rental"
                       unitPrice={result.priceRentalMonthly!}
                       label={getPurchaseModeLabel("rental", locale)}
@@ -326,7 +327,7 @@ export default function RoomMockupFlyout({
                   </div>
                 ) : (
                   <QuickAddButton
-                    product={{ id: result.productId, slug: product.slug, name: product.name }}
+                    product={{ id: result.productId, slug: product.slug, name: product.name, name_en: product.name_en }}
                     mode="buyout"
                     unitPrice={result.price}
                     label={getPurchaseModeLabel("buyout", locale)}

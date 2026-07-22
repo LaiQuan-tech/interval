@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatTWD, formatPoints, localizeText, localizeList } from "@/lib/format";
+import { formatTWD, formatPoints, localizeText, localizeList, getCategoryLabel } from "@/lib/format";
 import Placeholder, { gradientForId } from "@/components/Placeholder";
 import ArtworkPurchaseSection from "@/components/ArtworkPurchaseSection";
 import QuickAddButton from "@/components/QuickAddButton";
@@ -95,7 +95,7 @@ export default async function ProductDetailPage({
 
         <div className="flex flex-col">
           {product.category && (
-            <span className="lm-caption text-[12px]">{product.category}</span>
+            <span className="lm-caption text-[12px]">{getCategoryLabel(product.category, locale)}</span>
           )}
           <h1 className="mt-2 mb-1 font-serif text-[28px] font-normal text-ink sm:text-[34px]">
             {displayName}

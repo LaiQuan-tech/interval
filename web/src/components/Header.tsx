@@ -5,9 +5,11 @@ import LocaleSwitcher from "@/components/LocaleSwitcher";
 import MobileNav from "@/components/MobileNav";
 import NavLinks from "@/components/NavLinks";
 import { getLocale, getMessages } from "@/lib/i18n/server";
+import { localeHref } from "@/lib/i18n/href";
 
 export default async function Header() {
-  const messages = getMessages(await getLocale());
+  const locale = await getLocale();
+  const messages = getMessages(locale);
   let user = null;
   let isAdmin = false;
   try {
@@ -30,7 +32,7 @@ export default async function Header() {
     <header className="sticky top-0 z-40 bg-paper/94 backdrop-blur-sm">
       <div className="lm-container flex h-auto items-center justify-between gap-6 py-5">
         <Link
-          href="/"
+          href={localeHref("/", locale)}
           className="shrink-0 font-serif text-[22px] font-semibold tracking-[0.2em] text-ink-deep sm:text-[25px]"
         >
           {messages.header.brand}
@@ -44,21 +46,21 @@ export default async function Header() {
           <CartLink />
           <LocaleSwitcher className="hidden lg:flex" />
           <Link
-            href="/booking"
+            href={localeHref("/booking", locale)}
             className="hidden whitespace-nowrap border border-ink-deep px-5 py-2 font-cormorant text-sm tracking-[0.2em] text-ink-deep lg:inline-flex"
           >
             {messages.nav.booking}
           </Link>
           {user ? (
             <Link
-              href="/account"
+              href={localeHref("/account", locale)}
               className="iv-btn-ghost hidden !min-h-9 !px-4 !py-1.5 lg:inline-flex"
             >
               {messages.nav.memberCenter}
             </Link>
           ) : (
             <Link
-              href="/login"
+              href={localeHref("/login", locale)}
               className="iv-btn-primary hidden !min-h-9 !px-4 !py-1.5 lg:inline-flex"
             >
               {messages.nav.login}

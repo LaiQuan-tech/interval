@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { formatTWD, localizeText } from "@/lib/format";
 import Placeholder, { gradientForId } from "@/components/Placeholder";
 import { useTranslations } from "@/lib/i18n/context";
+import { localeHref } from "@/lib/i18n/href";
 import type { Product } from "@/lib/types";
 
 // 篩選鍵永遠對應 DB 內的中文 category 值(D phase 前 category 尚未翻譯);
@@ -59,7 +60,7 @@ export default function GalleryGrid({ works }: { works: Product[] }) {
           {filtered.map((w) => {
             const metadata = w.metadata as { tag?: string; medium?: string; gradient?: [string, string] };
             return (
-              <Link key={w.id} href={`/products/${w.slug}`} className="group block">
+              <Link key={w.id} href={localeHref(`/products/${w.slug}`, locale)} className="group block">
                 <Placeholder
                   src={w.images?.[0]?.url}
                   alt={localizeText(w.name, w.name_en, locale)}

@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatTWD } from "@/lib/format";
+import { formatTWD, localizeText } from "@/lib/format";
 import Placeholder, { gradientForId } from "@/components/Placeholder";
 import type { Product } from "@/lib/types";
 import { getLocale, getMessages } from "@/lib/i18n/server";
+import { localeHref } from "@/lib/i18n/href";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,8 @@ async function getFeaturedArtworks(): Promise<Product[]> {
 }
 
 export default async function HomePage() {
-  const messages = getMessages(await getLocale());
+  const locale = await getLocale();
+  const messages = getMessages(locale);
   const artworks = await getFeaturedArtworks();
 
   return (
@@ -45,11 +47,11 @@ export default async function HomePage() {
           {messages.home.heroDesc}
         </p>
         <div className="mt-11 flex flex-col gap-4 sm:flex-row sm:gap-[18px]">
-          <Link href="/booking" className="iv-btn-primary">
+          <Link href={localeHref("/booking", locale)} className="iv-btn-primary">
             {messages.home.heroCtaBooking}
           </Link>
           <Link
-            href="/gallery"
+            href={localeHref("/gallery", locale)}
             className="inline-flex items-center justify-center border-b border-gold px-3 py-4 text-sm tracking-[0.16em] text-ink-deep"
           >
             {messages.home.heroCtaGallery}
@@ -61,7 +63,7 @@ export default async function HomePage() {
       <section className="lm-container grid grid-cols-1 gap-0.5 pb-16 sm:pb-24 lg:grid-cols-[1.4fr_1fr]">
         <Placeholder
           src={artworks[0]?.images?.[0]?.url}
-          alt={artworks[0]?.name}
+          alt={artworks[0] ? localizeText(artworks[0].name, artworks[0].name_en, locale) : ""}
           label="Signature artwork — 招牌畫作"
           sizes="(max-width: 1024px) 100vw, 55vw"
           priority
@@ -70,7 +72,7 @@ export default async function HomePage() {
         <div className="flex flex-col gap-0.5">
           <Placeholder
             src={artworks[1]?.images?.[0]?.url}
-            alt={artworks[1]?.name}
+            alt={artworks[1] ? localizeText(artworks[1].name, artworks[1].name_en, locale) : ""}
             label="detail 01"
             sizes="(max-width: 1024px) 100vw, 40vw"
             priority
@@ -78,7 +80,7 @@ export default async function HomePage() {
           />
           <Placeholder
             src={artworks[2]?.images?.[0]?.url}
-            alt={artworks[2]?.name}
+            alt={artworks[2] ? localizeText(artworks[2].name, artworks[2].name_en, locale) : ""}
             label="detail 02"
             sizes="(max-width: 1024px) 100vw, 40vw"
             priority
@@ -126,7 +128,7 @@ export default async function HomePage() {
                   {card.title}
                 </h3>
                 <p className="mb-5 text-[14px] leading-[1.95] text-ink-soft">{card.desc}</p>
-                <Link href={card.href} className="text-[13px] tracking-[0.1em] text-accent border-b border-gold pb-0.5">
+                <Link href={localeHref(card.href, locale)} className="text-[13px] tracking-[0.1em] text-accent border-b border-gold pb-0.5">
                   {card.label}
                 </Link>
               </div>
@@ -139,7 +141,7 @@ export default async function HomePage() {
       <section className="lm-container py-16 sm:py-22">
         <div className="mb-9 flex items-baseline justify-between">
           <h2 className="font-serif text-[26px] font-normal text-ink sm:text-[34px]">{messages.home.featuredTitle}</h2>
-          <Link href="/gallery" className="text-[13px] tracking-[0.1em] text-accent whitespace-nowrap">
+          <Link href={localeHref("/gallery", locale)} className="text-[13px] tracking-[0.1em] text-accent whitespace-nowrap">
             {messages.home.featuredViewAll}
           </Link>
         </div>
@@ -149,19 +151,20 @@ export default async function HomePage() {
           <div className="grid grid-cols-1 gap-7 sm:grid-cols-3">
             {artworks.map((a) => {
               const metadata = a.metadata as { gradient?: [string, string] };
+              const displayName = localizeText(a.name, a.name_en, locale);
               return (
-                <Link key={a.id} href={`/products/${a.slug}`} className="group block">
+                <Link key={a.id} href={localeHref(`/products/${a.slug}`, locale)} className="group block">
                   <Placeholder
                     src={a.images?.[0]?.url}
-                    alt={a.name}
+                    alt={displayName}
                     gradient={metadata?.gradient ?? gradientForId(a.id)}
                     className="h-64 sm:h-75"
                   />
-                  <h4 className="mt-4 mb-1.5 font-serif text-[19px] text-ink">{a.name}</h4>
+                  <h4 className="mt-4 mb-1.5 font-serif text-[19px] text-ink">{displayName}</h4>
                   <div className="text-[12.5px] text-muted-2">
                     {a.price_rental_monthly != null &&
-                      `${messages.home.priceRentalPrefix} ${formatTWD(a.price_rental_monthly)}${messages.home.priceRentalSuffix}`}
-                    {messages.home.priceOutright} {formatTWD(a.price)}
+                      `${messages.home.priceRentalPrefix} ${formatTWD(a.price_rental_monthly, locale)}${messages.home.priceRentalSuffix}`}
+                    {messages.home.priceOutright} {formatTWD(a.price, locale)}
                   </div>
                 </Link>
               );
@@ -183,7 +186,7 @@ export default async function HomePage() {
             </p>
           </div>
           <Link
-            href="/membership"
+            href={localeHref("/membership", locale)}
             className="whitespace-nowrap border border-gold px-8.5 py-4 text-sm tracking-[0.16em] text-panel"
           >
             {messages.home.membershipCta}
